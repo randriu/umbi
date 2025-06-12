@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "umbi"
+version = "0.0.1"
+description = "Library for binary encoding of annotated transition systems"
+readme = "README.md"
+authors = [{name = "Roman Andriushchenko", email = "roman.andriu@gmail.com"}]
+license = {file = "LICENSE"}
+dependencies = [
+  "marshmallow",
+  "python-magic",
+  "tomli"
+]
+requires-python = ">=3.9"
+
+[project.urls]
+Homepage = "https://github.com/randriu/umbi"
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "pip-tools",
+  "black",
+  "isort",
+  "toml-sort",
+  "twine",
+  "bumpver"
+]
+
+[tool.setuptools]
+packages = ["umbi"]
+include-package-data = true
+
+[project.scripts]
+umbi = "umbi.__main__:main"
+
+[tool.bumpver]
+current_version = "0.0.1"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "bump version {old_version} -> {new_version}"
+tag_message = "{new_version}"
+tag_scope = "default"
+pre_commit_hook = ""
+post_commit_hook = ""
+commit = false
+tag = false
+push = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
