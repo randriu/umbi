@@ -1,24 +1,24 @@
 # umbi
 
-Installation:
+## Installation:
+
+(optional) create and activate a python environment:
 
 ```
-# pip install umbi
-pip install --extra-index-url https://test.pypi.org/simple/ umbi
+$ python -m venv venv
+$ source venv/bin/activate
 ```
 
-Example:
+Install `umbi` via
 ```
-import umbi
+(venv) $ pip install umbi
+```
 
-ats = umbi.from_umb("data/consensus-2-2.tar.gz")
-print(ats.num_states)
-print(ats.initial_states)
-print(ats.sample_path(state=52, length=10))
+## Running umbi
 
-ats.initial_states = [100]
-umbi.to_umb(ats, "data/alt.tar.gz")
-
-ats = umbi.from_umb("data/alt.tar.gz")
-print(ats.initial_states)
+Examples:
+```
+(venv) $ umbi --import-umb /path/to/input.umb
+(venv) $ umbi --import-umb /path/to/input.umb --export-umb /path/to/output.umb
+(venv) $ umbi --import-umb /path/to/input.umb --export-umb /path/to/output.umb --log-level=DEBUG
 ```
