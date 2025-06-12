@@ -23,7 +23,6 @@ def main(log_level, import_umb, export_umb):
 
     ats = None
     if import_umb is not None:
-        logging.info(f"loading ${import_umb}")
         ats = umbi.read_umb(import_umb)
     if export_umb is not None:
         if ats is None:

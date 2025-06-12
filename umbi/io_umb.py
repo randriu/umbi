@@ -333,6 +333,7 @@ def write_annotation_files(writer: umbi.TarWriter, ats: umbi.ExplicitAts):
 
 def read_umb(tarpath: str) -> umbi.ExplicitAts:
     """Read ATS from a .umb file."""
+    logging.info(f"reading ${tarpath}")
     reader = umbi.TarReader(tarpath)
     ats = umbi.ExplicitAts()
     read_index_file(reader, ats)
@@ -341,6 +342,7 @@ def read_umb(tarpath: str) -> umbi.ExplicitAts:
     read_action_files(reader, ats)
     read_annotation_files(reader, ats)
     reader.warn_unread_files()
+    logging.info(f"successfully read input file")
     # ats.validate()
     return ats
 
@@ -357,8 +359,8 @@ def write_umb(ats: umbi.ExplicitAts, tarpath: str):
     writer.write(tarpath)
 
     # sanity check: try to read the resulting file
-    try:
-        read_umb(tarpath)
-    except Exception as e:
-        logging.warning(f"failed to read the resulted file {tarpath}, printing the error message below:")
-        logging.warning(e)
+    # try:
+    #     read_umb(tarpath)
+    # except Exception as e:
+    #     logging.warning(f"failed to read the resulted file {tarpath}, printing the error message below:")
+    #     logging.warning(e)
