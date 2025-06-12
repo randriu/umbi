@@ -10,8 +10,8 @@ readme = "README.md"
 authors = [{name = "Roman Andriushchenko", email = "roman.andriu@gmail.com"}]
 license = {file = "LICENSE"}
 dependencies = [
+  "click",
   "marshmallow",
-  "python-magic",
   "tomli"
 ]
 requires-python = ">=3.9"
