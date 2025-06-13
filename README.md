@@ -1,5 +1,7 @@
 # umbi
 
+Library for input/output of transition systems in a *unified Markov binary (UMB)* format.
+
 ## Installation:
 
 (optional) create and activate a python environment:

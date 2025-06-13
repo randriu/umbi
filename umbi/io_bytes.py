@@ -61,7 +61,7 @@ def vector_to_bytes(vector: list, value_type: str, little_endian: bool = True) -
     :param value_type: vector element type, one of {"bool", "uint64", "double"}
     """
     if len(vector) == 0:
-        logging.warning("exporting empty binary file")
+        logging.warning("vector converted to an empty binary string")
         return b""
 
     if value_type == "char":

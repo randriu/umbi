@@ -7,6 +7,7 @@ from marshmallow import (
     ValidationError,
     fields,
     post_load,
+    pre_load,
     validate,
     validates_schema,
 )
@@ -48,7 +49,10 @@ class JsonSchema(Schema):
     @classmethod
     def from_json(cls, json_obj) -> SimpleNamespace:
         """Parse from a json object.
-        :returns None if any exception occurs"""
+
+        :returns: None if any exception occurs
+        :raises: ValidationError
+        """
         try:
             return cls().load(json_obj)
         except ValidationError as err:
@@ -60,27 +64,27 @@ class JsonSchema(Schema):
 class ModelDataSchema(JsonSchema):
     """Model data schema."""
 
-    name = fields.String(data_key="name")
-    version = fields.String(data_key="version")
-    authors = fields.List(fields.String(), data_key="authors")
-    description = fields.String(data_key="description")
-    comment = fields.String(data_key="comment")
-    doi = fields.String(data_key="doi")
-    url = fields.String(data_key="url")
+    name = fields.String(data_key="name", required=False)
+    version = fields.String(data_key="version", required=False)
+    authors = fields.List(fields.String(), data_key="authors", required=False)
+    description = fields.String(data_key="description", required=False)
+    comment = fields.String(data_key="comment", required=False)
+    doi = fields.String(data_key="doi", required=False)
+    url = fields.String(data_key="url", required=False)
 
 
 class FileDataSchema(JsonSchema):
     """File data schema."""
 
-    tool = fields.String(data_key="tool")
-    tool_version = fields.String(data_key="tool-version")
-    creation_date = FieldUint(data_key="creation-date")
-    parameters = fields.Raw(data_key="parameters")
+    tool = fields.String(data_key="tool", required=False)
+    tool_version = fields.String(data_key="tool-version", required=False)
+    creation_date = FieldUint(data_key="creation-date", required=False)
+    parameters = fields.Raw(data_key="parameters", required=False)
 
     @classmethod
     def this_tool_object(cls):
-        """Create an object with attributes set according to this tool."""
-        obj = SimpleNamespace(**{field: None for field in cls().fields})
+        """Create a file-data object with attributes set according to this tool."""
+        obj = cls.empty_object()
         obj.tool = umbi.__toolname__
         obj.tool_version = umbi.__version__
         obj.creation_date = int(time.time())
@@ -88,7 +92,7 @@ class FileDataSchema(JsonSchema):
 
 
 class TransitionSystemSchema(JsonSchema):
-    """ATS index file schema."""
+    """Transition system schema."""
 
     time = fields.String(
         data_key="time", required=True, validate=validate.OneOf(["discrete", "stochastic", "urgent-stochastic"])
@@ -108,29 +112,32 @@ class TransitionSystemSchema(JsonSchema):
     )
 
 
-class AtomicPropositionSchema(JsonSchema):
-    """Atomic proposition schema."""
+# TODO maybe unify parsing of annotations
+
+
+class AnnotationSchema(JsonSchema):
+    """A common schema shared among aps, rewards and variables."""
 
     alias = fields.String(data_key="alias", required=False)
     description = fields.String(data_key="description", required=False)
-    applies_to = fields.List(
-        fields.String(validate=validate.OneOf(["states", "choices", "branches"])), data_key="applies-to", required=True
-    )
-    type = fields.String(
-        data_key="type", required=False, validate=validate.OneOf(["bool"]), load_default="bool"
-    )  # TODO discuss
-
-
-class RewardSchema(JsonSchema):
-    """Reward model schema."""
-
-    alias = fields.String(data_key="alias")
-    description = fields.String(data_key="description")
     applies_to = fields.List(
         fields.String(validate=validate.OneOf(["states", "choices", "branches"])),
         data_key="applies-to",
         required=True,
     )
+
+
+class AtomicPropositionSchema(AnnotationSchema):
+    """Atomic proposition schema."""
+
+    type = fields.String(
+        data_key="type", required=False, validate=validate.OneOf(["bool"]), load_default="bool"
+    )  # TODO discuss: do we need this field?
+
+
+class RewardSchema(AnnotationSchema):
+    """Reward model schema."""
+
     type = fields.String(
         data_key="type",
         required=True,
@@ -140,14 +147,9 @@ class RewardSchema(JsonSchema):
     upper = fields.Float(data_key="upper", required=False)
 
 
-class VariableValuationSchema(JsonSchema):
+class VariableValuationSchema(AnnotationSchema):
     """Variable valuation schema."""
 
-    alias = fields.String(data_key="alias", required=False)
-    description = fields.String(data_key="description", required=False)
-    applies_to = fields.List(
-        fields.String(validate=validate.OneOf(["states", "choices", "branches"])), data_key="applies-to", required=True
-    )
     type = fields.String(
         data_key="type", required=True, validate=validate.OneOf(["bool", "int", "int32", "uint32", "int64", "uint64"])
     )
@@ -161,16 +163,39 @@ class VariableValuationSchema(JsonSchema):
         return obj
 
 
-class AnnotationSchema(JsonSchema):
-    """Single annotation schema."""
+class AnnotationDictSchema(JsonSchema):
+    """
+    Annotation dictionary schema. We accept an arbitrary dictionary of string->jsonlike. We process known annotation
+    types accordingly (APs, rewards, variables), but also keep other annotations. The result is not actually dictionary,
+    but an object with proper fields.
+    """
 
-    aps = fields.Dict(
-        keys=fields.String(), values=fields.Nested(AtomicPropositionSchema), data_key="aps", required=False
-    )
-    rewards = fields.Dict(keys=fields.String(), values=fields.Nested(RewardSchema), data_key="rewards", required=False)
-    variables = fields.Dict(
-        keys=fields.String(), values=fields.Nested(VariableValuationSchema), data_key="variables", required=False
-    )
+    # meta class to accept anything
+    class Meta:
+        unknown = "include"
+
+    @classmethod
+    def empty_object(cls):
+        """Create an empty annotation dictionary object."""
+        return SimpleNamespace(aps=None, rewards=None, variables=None, other={})
+
+    @post_load
+    def make_object(self, data, **kwargs):
+        """Post-processing of data and creation of a proper annotation dictionary."""
+        annotations = AnnotationDictSchema.empty_object()
+        for key, name_desc in data.items():
+            if key == "aps":
+                annotations.aps = {name: AtomicPropositionSchema().load(desc) for name, desc in name_desc.items()}
+            elif key == "rewards":
+                annotations.rewards = {name: RewardSchema().load(desc) for name, desc in name_desc.items()}
+            elif key == "variables":
+                annotations.variables = {name: VariableValuationSchema().load(desc) for name, desc in name_desc.items()}
+            else:
+                logging.warning(
+                    f'encountered unknown annotation key "{key}", its value will be stored as a json-like under annotations.other["{key}"]'
+                )
+                annotations.other[key] = name_desc
+        return annotations
 
 
 class AtsInfoSchema(JsonSchema):
@@ -181,7 +206,7 @@ class AtsInfoSchema(JsonSchema):
     model_data = fields.Nested(ModelDataSchema, data_key="model-data", required=False)
     file_data = fields.Nested(FileDataSchema, data_key="file-data", required=False)
     transition_system = fields.Nested(TransitionSystemSchema, data_key="transition-system", required=True)
-    annotations = fields.Nested(AnnotationSchema, data_key="annotations", required=False)
+    annotations = fields.Nested(AnnotationDictSchema, data_key="annotations", required=False)
 
     @classmethod
     def empty_object(cls):
@@ -192,7 +217,7 @@ class AtsInfoSchema(JsonSchema):
         obj.model_data = ModelDataSchema.empty_object()
         obj.file_data = FileDataSchema.empty_object()
         obj.transition_system = TransitionSystemSchema.empty_object()
-        obj.annotations = AnnotationSchema.empty_object()
+        obj.annotations = AnnotationDictSchema.empty_object()
         return obj
 
 
@@ -323,12 +348,16 @@ def read_annotation_files(reader: umbi.TarReader, ats: umbi.ExplicitAts):
     read_annotation(reader, "aps", ats.info.annotations.aps)
     read_annotation(reader, "rewards", ats.info.annotations.rewards)
     read_annotation(reader, "variables", ats.info.annotations.variables)
+    for key in ats.info.annotations.other:
+        logging.debug(f'skipping annotation type "{key}" during reading')
 
 
 def write_annotation_files(writer: umbi.TarWriter, ats: umbi.ExplicitAts):
     write_annotation(writer, "aps", ats.info.annotations.aps)
     write_annotation(writer, "rewards", ats.info.annotations.rewards)
     write_annotation(writer, "variables", ats.info.annotations.variables)
+    for key in ats.info.annotations.other:
+        logging.debug(f'skipping annotation type "{key}" during writing')
 
 
 def read_umb(tarpath: str) -> umbi.ExplicitAts:
