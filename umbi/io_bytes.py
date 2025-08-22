@@ -64,8 +64,7 @@ def vector_to_bytes(vector: list, value_type: str, little_endian: bool = True) -
         logging.warning("vector converted to an empty binary string")
         return b""
 
-    if value_type == "char":
-        return string_to_bytes(vector)
+    assert value_type != "char", "use bytes_to_string for char vectors"
 
     if value_type == "bool":
         # TODO respect endianness
@@ -98,8 +97,7 @@ def bytes_to_vector(vector_bytes: bytes, value_type: str, little_endian: bool = 
 
     :param value_type: vector element type, one of {"bool", "uint64", "double"}
     """
-    if value_type == "char":
-        return bytes_to_string(vector_bytes)
+    assert value_type != "char", "use bytes_to_string for char vectors"
     if value_type == "bool":
         bitvector = []
         for bitmask in vector_bytes:

@@ -7,7 +7,6 @@ from marshmallow import (
     ValidationError,
     fields,
     post_load,
-    pre_load,
     validate,
     validates_schema,
 )
@@ -51,7 +50,7 @@ class JsonSchema(Schema):
         """Parse from a json object.
 
         :returns: None if any exception occurs
-        :raises: ValidationError
+        :raises: ValidationError if the json object does not conform to the schema
         """
         try:
             return cls().load(json_obj)
@@ -149,6 +148,7 @@ class RewardSchema(AnnotationSchema):
 
 class VariableValuationSchema(AnnotationSchema):
     """Variable valuation schema."""
+    # FIXME
 
     type = fields.String(
         data_key="type", required=True, validate=validate.OneOf(["bool", "int", "int32", "uint32", "int64", "uint64"])
@@ -157,7 +157,7 @@ class VariableValuationSchema(AnnotationSchema):
     @post_load
     def make_object(self, data, **kwargs):
         obj = super().make_object(data, **kwargs)
-        if obj.type == "int":  # TODO discuss
+        if obj.type == "int":
             logging.warning("variable annotation type is int, interpreting as int32")
             obj.type = "int32"
         return obj
@@ -165,7 +165,7 @@ class VariableValuationSchema(AnnotationSchema):
 
 class AnnotationDictSchema(JsonSchema):
     """
-    Annotation dictionary schema. We accept an arbitrary dictionary of string->jsonlike. We process known annotation
+    Annotation dictionary schema. We accept an arbitrary dictionary of string->JsonLike. We process known annotation
     types accordingly (APs, rewards, variables), but also keep other annotations. The result is not actually dictionary,
     but an object with proper fields.
     """
@@ -242,7 +242,7 @@ def write_index_file(writer: umbi.TarWriter, ats: umbi.ExplicitAts):
     json_obj = AtsInfoSchema().dump(info)
     json_obj = umbi.json_remove_none(json_obj)
     umbi.json_show(json_obj)
-    writer.add(json_obj, "index.json", "json")
+    writer.add_json(json_obj, "index.json")
 
 
 def read_state_files(reader: umbi.TarReader, ats: umbi.ExplicitAts):
@@ -253,18 +253,18 @@ def read_state_files(reader: umbi.TarReader, ats: umbi.ExplicitAts):
     if ts.num_players > 1:
         ats.state_to_player = reader.read("state-to-player.bin", "uint64")
     if ts.time in ["stochastic", "urgent-stochastic"]:
-        ats.exit_rates = reader.read("exit-rates.bin", "double")  # TODO discuss
+        ats.exit_rates = reader.read("exit-rates.bin", "double")
 
 
 def write_state_files(writer: umbi.TarWriter, ats: umbi.ExplicitAts):
     ts = ats.info.transition_system
-    writer.add(umbi.indices_to_bitvector(ats.initial_states, ts.num_states), "initial-states.bin", "bool")
+    writer.add_list(umbi.indices_to_bitvector(ats.initial_states, ts.num_states), "initial-states.bin", "bool")
     if ts.num_players > 0:
-        writer.add(umbi.ranges_to_row_start(ats.state_choices), "state-to-choice.bin", "uint64")
+        writer.add_list(umbi.ranges_to_row_start(ats.state_choices), "state-to-choice.bin", "uint64")
     if ts.num_players > 1:
-        writer.add(ats.state_to_player, "state-to-player.bin", "uint64")
+        writer.add_list(ats.state_to_player, "state-to-player.bin", "uint64")
     if ts.time in ["stochastic", "urgent-stochastic"]:
-        writer.add(ats.exit_rates, "exit-rates.bin", "double")  # TODO discuss
+        writer.add_list(ats.exit_rates, "exit-rates.bin", "double")
 
 
 def read_branch_files(reader: umbi.TarReader, ats: umbi.ExplicitAts):

@@ -11,10 +11,9 @@ authors = [{name = "Roman Andriushchenko", email = "roman.andriu@gmail.com"}]
 license = {file = "LICENSE"}
 dependencies = [
   "click",
-  "marshmallow",
-  "tomli"
+  "marshmallow"
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 
 [project.urls]
 Homepage = "https://github.com/randriu/umbi"
