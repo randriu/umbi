@@ -1,8 +1,13 @@
+"""
+Utilities for encoding, decoding, and cleaning JSON objects.
+"""
+
 import json
 import logging
+logger = logging.getLogger(__name__)
 import typing
 
-import umbi
+from .bytes import bytes_to_string, string_to_bytes
 
 """A type alias for (high-level) JSON objects."""
 JsonLike = typing.Union[dict, list]
@@ -26,17 +31,17 @@ def string_to_json(json_str: str) -> JsonLike:
     try:
         return json.loads(json_str)
     except json.JSONDecodeError as e:
-        logging.error(f"JSON decode error: {e}")
+        logger.error(f"JSON decode error: {e}")
         raise
 
-def json_show(json_obj: JsonLike):
+def json_show_debug(json_obj: JsonLike):
     """Print a JSON object to logging.debug."""
-    logging.debug(json_to_string(json_obj))
+    logger.debug(json_to_string(json_obj))
 
 def bytes_to_json(data: bytes) -> JsonLike:
     """Convert bytes to a JSON object."""
-    return string_to_json(umbi.bytes_to_string(data))
+    return string_to_json(bytes_to_string(data))
 
 def json_to_bytes(json_obj: JsonLike) -> bytes:
     """Convert a JSON object to bytes."""
-    return umbi.string_to_bytes(json_to_string(json_obj))
+    return string_to_bytes(json_to_string(json_obj))

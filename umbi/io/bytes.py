@@ -1,8 +1,11 @@
+"""
+Utilities for (de)serializing binary strings.
+"""
+
 import logging
+logger = logging.getLogger(__name__)
+
 import struct
-
-import umbi
-
 
 def bytes_to_string(data: bytes) -> str:
     """Convert a binary string to a utf-8 string."""
@@ -14,9 +17,9 @@ def string_to_bytes(string: str) -> bytes:
     return string.encode("utf-8")
 
 
-def assert_key_in_dict(table: dict, key, desc: str):
+def assert_key_in_dict(table: dict, key: object, desc: str):
     if key not in table:
-        raise ValueError(f"{desc} must be in {table} but is {key}")
+        raise ValueError(f"{desc} must be one of {table} but is {key}")
 
 
 def value_type_to_struct_format(value_type: str) -> str:
@@ -61,7 +64,7 @@ def vector_to_bytes(vector: list, value_type: str, little_endian: bool = True) -
     :param value_type: vector element type, one of {"bool", "uint64", "double"}
     """
     if len(vector) == 0:
-        logging.warning("vector converted to an empty binary string")
+        logger.warning("vector converted to an empty binary string")
         return b""
 
     assert value_type != "char", "use bytes_to_string for char vectors"
@@ -95,7 +98,8 @@ def bytes_to_vector(vector_bytes: bytes, value_type: str, little_endian: bool = 
     """
     Decode a binary string as a list of numbers.
 
-    :param value_type: vector element type, one of {"bool", "uint64", "double"}
+    :param value_type: vector element type, one of ["bool", "uint32", "uint64", "double"]
+    :param little_endian: if True, the binary string is interpreted as little-endian
     """
     assert value_type != "char", "use bytes_to_string for char vectors"
     if value_type == "bool":

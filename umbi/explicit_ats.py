@@ -1,7 +1,7 @@
 # import umbi
 
 
-class ExplicitAts:
+class ExplicitUmb:
     """Annotated transition system in an explicit format matching the .umb file format."""
 
     def __init__(self):

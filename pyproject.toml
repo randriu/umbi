@@ -36,6 +36,10 @@ include-package-data = true
 [project.scripts]
 umbi = "umbi.__main__:main"
 
+[tool.umbi]
+format_version = "0"
+format_revision = "1"
+
 [tool.bumpver]
 current_version = "0.0.2"
 version_pattern = "MAJOR.MINOR.PATCH"
