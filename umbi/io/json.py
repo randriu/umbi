@@ -39,11 +39,6 @@ def string_to_json(json_str: str) -> JsonLike:
         raise
 
 
-def json_show_debug(json_obj: JsonLike):
-    """Print a JSON object to logging.debug."""
-    logger.debug(json_to_string(json_obj))
-
-
 def bytes_to_json(data: bytes) -> JsonLike:
     """Convert bytes to a JSON object."""
     return string_to_json(bytes_to_string(data))

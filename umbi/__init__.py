@@ -1,9 +1,10 @@
 import os
 import tomllib
 
+import umbi.io
+
 from .index import UmbIndex
-from .io import *
-from .logging import set_log_level, setup_logging
+from .logger import set_log_level, setup_logging
 from .umb import ExplicitUmb, read_umb, write_umb
 
 
@@ -19,6 +20,6 @@ def get_pyproject_attribute(attribute, default):
 
 
 __toolname__ = get_pyproject_attribute("name", "unknown")
-__version__ = get_pyproject_attribute("version", "0.0.0")
+__version__ = get_pyproject_attribute("version", "unknown")
 __format_version__ = get_pyproject_attribute("format_version", 0)
 __format_revision__ = get_pyproject_attribute("format_revision", 1)

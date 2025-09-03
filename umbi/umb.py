@@ -1,5 +1,5 @@
 import logging
-from csv import reader
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -7,6 +7,7 @@ from enum import Enum
 from types import SimpleNamespace
 
 import umbi
+import umbi.io
 
 
 class UmbFile(Enum):
@@ -58,7 +59,8 @@ class ExplicitUmb:
 
     def validate(self):
         # TODO implement
-        logger.debug("UMB validation requested but is not implemented yet")
+        # logger.debug("UMB validation requested but is not implemented yet")
+        return
 
 
 class UmbReader(umbi.io.TarReader):
@@ -67,42 +69,28 @@ class UmbReader(umbi.io.TarReader):
         # to keep track of which files were read
         self.filename_read = {filename: False for filename in self.filenames}
 
+    def warn_about_unread_files(self):
+        """Print warning about unread files from the tarfile, if such exist."""
+        unread_files = [f for f, read in self.filename_read.items() if not read]
+        for f in unread_files:
+            logger.warning(f"umbfile contains unrecognized file: {f}")
+
     def read_file(self, filename: str, required: bool = False) -> bytes | None:
         """Read raw bytes from a specific file in the tarball. Mark the file as read."""
         if filename in self.filenames:
             self.filename_read[filename] = True
         return super().read_file(filename, required)
 
-    def warn_about_unread_files(self):
-        """Print warning about unread files from the tarfile, if such exist."""
-        unread_files = [f for f, read in self.filename_read.items() if not read]
-        if len(unread_files) > 0:
-            for f in unread_files:
-                logger.warning(f"umbfile contains unrecognized file: {f}")
-
     def read_common(self, file: UmbFile, required: bool = False):
-        filename, file_type = file.value
-        if file_type == "json":
-            return self.read_json(filename, required=required)
-        elif file_type == "csr":
-            return self.read_csr(filename, required=required)
-        elif file_type == "bytes":
-            return self.read_file(filename, required=required)
-        elif file_type.startswith("vector[") and file_type.endswith("]"):
-            value_type = file_type[len("vector[") : -1]
-            return self.read_vector(filename, value_type, required=required)
-        else:
-            raise ValueError(f"unrecognized file type {file_type} for file {filename}")
+        filename, filetype = file.value
+        return self.read_filetype(filename, filetype, required)
 
     def read_common_csr(self, file: UmbFile, value_type: str, file_csr: UmbFile, required: bool = False):
-        csr_required = False
-        if value_type == "string":
-            csr_required = True
-        bytes = self.read_common(file, required=required)
-        chunk_ranges = self.read_common(file_csr, required=csr_required)
-        return umbi.io.bytes_to_vector(bytes, value_type, chunk_ranges=chunk_ranges)
+        filename, _ = file.value
+        filename_csr, _ = file_csr.value
+        return self.read_filetype_csr(filename, value_type, filename_csr, required)
 
-    # TODO make annotation a dedicated class
+    # TODO make annotation into a dedicated class
     def read_annotation(self, label: str, annotation_dict: dict[str, SimpleNamespace] | None):
         """
         Read annotation files. The values from the files will be stored in the corresponding annotation object as a new dictionary mapping applies-to -> values
@@ -114,9 +102,12 @@ class UmbReader(umbi.io.TarReader):
         for name, annotation in annotation_dict.items():
             annotation.values = dict[str, list]()
             for applies in annotation.applies_to:
-                values = self.read_file(f"annotations/{label}/{name}/for-{applies}/values.bin", required=True)
-                to_value = self.read_csr(f"annotations/{label}/{name}/for-{applies}/to-value.bin", required=False)
-                annotation.values[applies] = umbi.io.bytes_to_vector(values, annotation.type, chunk_ranges=to_value)
+                path = f"annotations/{label}/{name}/for-{applies}"
+                vector = self.read_filetype_csr(
+                    f"{path}/values.bin", annotation.type, f"{path}/to-value.bin", required=True
+                )
+                assert vector is not None
+                annotation.values[applies] = vector
 
     def read_state_valuations(self, state_valuations: dict[str, object] | None):
         # TODO implement
@@ -125,7 +116,7 @@ class UmbReader(umbi.io.TarReader):
         logger.warning("state valuations import is not implemented yet")
         return
 
-    def read_umb(self):
+    def read_umb(self):  # type: ignore
         logger.info(f"loading umbfile from ${self.tarpath} ...")
         umb = ExplicitUmb()
 
@@ -167,31 +158,13 @@ class UmbReader(umbi.io.TarReader):
 class UmbWriter(umbi.io.TarWriter):
 
     def add_common(self, file: UmbFile, data, required: bool = False):
-        if data is None:
-            if required:
-                raise ValueError(f"missing required data for {file}")
-            return
-        filename, file_type = file.value
-        if file_type == "json":
-            self.add_json(filename, data)
-        elif file_type == "csr":
-            self.add_csr(filename, data)
-        elif file_type == "bytes":
-            self.add_file(filename, data)
-        elif file_type.startswith("vector[") and file_type.endswith("]"):
-            value_type = file_type[len("vector[") : -1]
-            self.add_vector(filename, data, value_type)
-        else:
-            raise ValueError(f"unrecognized file type {file_type} for file {filename}")
+        filename, filetype = file.value
+        self.add_filetype(filename, filetype, data, required=required)
 
     def add_common_csr(self, file: UmbFile, data, value_type: str, file_csr: UmbFile, required: bool = False):
-        if data is None:
-            if required:
-                raise ValueError(f"missing required data for {file}")
-            return
         filename, _ = file.value
         filename_csr, _ = file_csr.value
-        self.add_vector(filename, data, value_type, filename_csr=filename_csr)
+        self.add_filetype_csr(filename, value_type, data, filename_csr, required=required)
 
     def add_annotation(self, label: str, annotation_dict: dict[str, SimpleNamespace] | None):
         """
@@ -204,7 +177,9 @@ class UmbWriter(umbi.io.TarWriter):
         for name, annotation in annotation_dict.items():
             for applies, values in annotation.values.items():
                 prefix = f"annotations/{label}/{name}/for-{applies}"
-                self.add_vector(f"{prefix}/values.bin", values, annotation.type, filename_csr=f"{prefix}/to-values.bin")
+                self.add_filetype_csr(
+                    f"{prefix}/values.bin", annotation.type, values, f"{prefix}/to-values.bin", required=True
+                )
 
     def add_state_valuations(self, state_valuations: dict[str, list[float]] | None):
         if state_valuations is None:

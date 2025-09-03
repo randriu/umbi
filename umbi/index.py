@@ -74,7 +74,7 @@ class JsonSchema(Schema):
             return cls().load(json_obj)  # type: ignore[return-value] since post_load will return SimpleNamespace
         except ValidationError as err:
             logger.error(f"{cls} validation error:")
-            logger.error(umbi.json_to_string(err.messages))
+            logger.error(umbi.io.json_to_string(err.messages))
             raise err
 
 
@@ -99,7 +99,7 @@ class FileDataSchema(JsonSchema):
     parameters = fields.Raw(data_key="parameters", required=False)
 
     @classmethod
-    def this_tool_object(cls, parameters: umbi.JsonLike | None = None):
+    def this_tool_object(cls, parameters: umbi.io.JsonLike | None = None):
         """
         Create a file-data object that reflects that umbi was used to create this index file.
         :param parameters: (optional) umbi parameters
@@ -256,7 +256,7 @@ class UmbIndex:
         self.annotations = AnnotationsSchema.empty_object()
 
     @classmethod
-    def from_json(cls, json_obj: umbi.JsonLike) -> "UmbIndex":
+    def from_json(cls, json_obj: umbi.io.JsonLike) -> "UmbIndex":
         """Parse from a json object."""
         info = UmbIndexSchema.from_json(json_obj)
         obj = cls()
@@ -285,7 +285,7 @@ class UmbIndex:
             setattr(other, field, getattr(self, field))
         return other
 
-    def to_json(self, use_this_tool_file_data: bool = False, remove_none: bool = True) -> umbi.JsonLike:
+    def to_json(self, use_this_tool_file_data: bool = False, remove_none: bool = True) -> umbi.io.JsonLike:
         """
         Convert to a json object.
         :param use_this_tool_file_data: if True, the file-data field will be set to the values corresponding to this tool

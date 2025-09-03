@@ -20,22 +20,22 @@ def ranges_to_row_start(ranges: list[tuple[int, int]]) -> list[int]:
     return row_start
 
 
-def indices_to_bitvector(vector: list[int], num_entries: int) -> list[bool]:
-    """Convert a list of unsigned integers to a bitvector.
+# def indices_to_bitvector(vector: list[int], num_entries: int) -> list[bool]:
+#     """Convert a list of unsigned integers to a bitvector.
 
-    :param vector: a list of unsigned integers
-    :param num_entries: the size of the resulting bitvector, must be no smaller than max(vector)
-    """
-    assert max(vector) < num_entries
-    bitvector = [False] * num_entries
-    for x in vector:
-        bitvector[x] = True
-    return bitvector
+#     :param vector: a list of unsigned integers
+#     :param num_entries: the size of the resulting bitvector, must be no smaller than max(vector)
+#     """
+#     assert max(vector) < num_entries
+#     bitvector = [False] * num_entries
+#     for x in vector:
+#         bitvector[x] = True
+#     return bitvector
 
 
-def bitvector_to_indices(bitvector: list[bool]) -> list[int]:
-    """Convert a bitvector to a list of indices set to True.
+# def bitvector_to_indices(bitvector: list[bool]) -> list[int]:
+#     """Convert a bitvector to a list of indices set to True.
 
-    :param bitvector: a list of bools
-    """
-    return [i for i, bit in enumerate(bitvector) if bit]
+#     :param bitvector: a list of bools
+#     """
+#     return [i for i, bit in enumerate(bitvector) if bit]

@@ -2,7 +2,7 @@
 Utilities for reading/wrting Tar archives.
 """
 
-import io
+import io as std_io
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,6 +12,16 @@ from typing import Optional
 from .bytes import bytes_to_vector, vector_to_bytes
 from .json import JsonLike, bytes_to_json, json_to_bytes
 from .vector import *
+
+
+def is_of_vector_type(filetype: str) -> bool:
+    return filetype.startswith("vector[") and filetype.endswith("]")
+
+
+def value_type_of(filetype: str) -> str:
+    if is_of_vector_type(filetype):
+        return filetype[len("vector[") : -1]
+    raise ValueError(f"filetype {filetype} is not a vector type")
 
 
 class TarReader:
@@ -55,32 +65,55 @@ class TarReader:
                 raise KeyError(f"tar archive {self.tarpath} has no file {filename}")
         return self.filename_data[filename]
 
-    def read_json(self, filename: str, required: bool = False) -> JsonLike | None:
-        """Read a JSON-like object from a specific file in the tarball."""
+    def read_filetype(self, filename: str, filetype: str, required: bool = False):
+        """
+        Read a file of a specific type.
+        :param filename: name of the file to read
+        :param filetype: one of ["bytes", "json", "csr", "vector[X]"] where X is a value type not requiring CSR
+        :param required: if True, raise an error if the file is not found
+        """
         data = self.read_file(filename, required)
         if data is None:
             return None
-        return bytes_to_json(data)
+        if filetype == "bytes":
+            return data
+        if filetype == "json":
+            return bytes_to_json(data)
+        if filetype == "csr":
+            vector = bytes_to_vector(data, "uint64")
+            return row_start_to_ranges(vector)
+        if is_of_vector_type(filetype):
+            value_type = value_type_of(filetype)
+            return bytes_to_vector(data, value_type)
+        else:
+            raise ValueError(f"unrecognized file type {filetype} for file {filename}")
 
-    def read_vector(self, filename: str, value_type: str, required: bool = False) -> list | None:
-        """Read a vector of items from a specific file in the tarball, optionally converting ranges to row starts."""
+    def read_filetype_csr(
+        self, filename: str, value_type: str, filename_csr: str, required: bool = False
+    ) -> list | None:
+        """
+        Read a file containing a vector of values. Use an accompanying CSR file if needed.
+        :param filename: name of the main file to read
+        :param value_type: value type
+        :param filename_csr: name of the accompanying CSR file
+        :param required: if True, raise an error if the main file is not found
+        """
         data = self.read_file(filename, required)
         if data is None:
             return None
-        return bytes_to_vector(data, value_type)
+        csr_required = False
+        if value_type == "string":
+            # require CSR file for strings
+            # later, we might require CSR for non-standard rationals
+            csr_required = True
+        chunk_ranges = None
+        if csr_required:
+            chunk_ranges = self.read_filetype(filename_csr, "csr", required=csr_required)
+            assert isinstance(chunk_ranges, list) or chunk_ranges is None
+        return bytes_to_vector(data, value_type, chunk_ranges=chunk_ranges)
 
-    def read_csr(
-        self, filename: str, value_type: str = "uint64", required: bool = False
-    ) -> list[tuple[int, int]] | None:
-        """Read a CSR matrix from a specific file in the tarball."""
-        assert value_type in ["uint32", "uint64"], "CSR format only supported for vectors of unsigned integers"
-        vector = self.read_vector(filename, value_type, required=required)
-        if vector is None:
-            return None
-        return row_start_to_ranges(vector)
 
-
-class TarWriter:
+class TarWriter:  #
     """An auxiliary class to simplify tar writing."""
 
     @classmethod
@@ -98,7 +131,7 @@ class TarWriter:
             for filename, data in filename_data.items():
                 tar_info = tarfile.TarInfo(name=filename)
                 tar_info.size = len(data)
-                tar.addfile(tar_info, io.BytesIO(data))
+                tar.addfile(tar_info, std_io.BytesIO(data))
         # logger.debug(f"successfully wrote the tarfile")
 
     def __init__(self):
@@ -110,34 +143,41 @@ class TarWriter:
             logger.warning(f"file {filename} already exists in the tarball")
         self.filename_data[filename] = data
 
-    def add_json(self, filename: str, json_obj: JsonLike):
-        """Add a JSON file to the tarball."""
-        self.add_file(filename, json_to_bytes(json_obj))
+    def add_filetype(self, filename: str, filetype: str, data, required: bool = False):
+        if data is None:
+            if required:
+                raise ValueError(f"missing required data for {filename}")
+            return
+        data_out = None
+        if filetype == "bytes":
+            data_out = data
+        elif filetype == "json":
+            data_out = json_to_bytes(data)
+        elif filetype == "csr":
+            data_out, chunk_ranges = vector_to_bytes(ranges_to_row_start(data), "uint64")
+            assert chunk_ranges is None, "unexpected chunk ranges"
+        elif is_of_vector_type(filetype):
+            value_type = value_type_of(filetype)
+            data_out, chunk_ranges = vector_to_bytes(data, value_type)
+            assert chunk_ranges is None, "exporting the vector requires the CSR file, but no such file was specified"
+        else:
+            raise ValueError(f"unrecognized file type {filetype} for file {filename}")
+        assert data_out is not None, "data is not None, but data_out is None"
+        assert isinstance(data_out, bytes), "data_out must be of type bytes"
+        self.add_file(filename, data_out)
 
-    def add_vector(self, filename: str, vector: list, value_type: str, filename_csr: Optional[str] = None):
-        """
-        Add a file containing a vector of items to the tarball, optionally converting ranges to row starts.
-        :param filename_csr: optional filename for the CSR representation of the vector
-        """
-        data, chunk_ranges = vector_to_bytes(vector, value_type)
-        self.add_file(filename, data)
+    def add_filetype_csr(self, filename: str, value_type: str, data, filename_csr: str, required: bool = False):
+        if data is None:
+            if required:
+                raise ValueError(f"missing required data for {filename}")
+            return
+        data_out, chunk_ranges = vector_to_bytes(data, value_type)
+        self.add_file(filename, data_out)
         if chunk_ranges is not None:
-            assert filename_csr is not None
-            row_start = ranges_to_row_start(chunk_ranges)
-            csr_data, csr_ranges = vector_to_bytes(row_start, "uint64")
+            data_csr, csr_ranges = vector_to_bytes(ranges_to_row_start(chunk_ranges), "uint64")
             assert csr_ranges is None, "row_start should be a flat vector"
-            self.add_file(filename_csr, csr_data)
-
-    def add_csr(self, filename: str, csr: list[tuple[int, int]], value_type: str = "uint64"):
-        """Add a file containing a CSR matrix to the tarball."""
-        assert value_type in ["uint32", "uint64"], "CSR format only supported for integer vectors"
-        row_start = ranges_to_row_start(csr)
-        self.add_vector(filename, row_start, value_type)
-
-    def add_bitvector_indices(self, filename: str, bitvector_indices: list[int], num_entries: int):
-        """Add a file containing indices of a bitvector to the tarball."""
-        bitvector = indices_to_bitvector(bitvector_indices, num_entries)
-        self.add_vector(filename, bitvector, "bool")
+            assert isinstance(data_csr, bytes), "data_csr must be of type bytes"
+            self.add_file(filename_csr, data_csr)
 
     def write(self, tarpath: str, gzip: bool = True):
         """Write all added files to a tarball."""
