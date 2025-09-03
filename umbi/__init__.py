@@ -1,12 +1,10 @@
-
 import os
-
 import tomllib
 
-from .io import *
 from .index import UmbIndex
-from .logging import setup_logging,set_log_level
-from .umb import read_umb, write_umb, ExplicitUmb
+from .io import *
+from .logging import set_log_level, setup_logging
+from .umb import ExplicitUmb, read_umb, write_umb
 
 
 def get_pyproject_attribute(attribute, default):

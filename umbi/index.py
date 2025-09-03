@@ -3,11 +3,13 @@ Parsing the .umb index file.
 """
 
 import logging
+
 logger = logging.getLogger(__name__)
 import time
 from types import SimpleNamespace
 
 from marshmallow import (
+    INCLUDE,
     Schema,
     ValidationError,
     fields,
@@ -15,7 +17,6 @@ from marshmallow import (
     validate,
     validates,
     validates_schema,
-    INCLUDE
 )
 
 import umbi
@@ -38,9 +39,10 @@ class JsonSchema(Schema):
     """An abstract class to represent specific schemas that will follow."""
 
     """ To allow unknown fields in the input data. """
+
     class Meta:
         unknown = INCLUDE
-    
+
     @post_load
     def make_object(self, data, **kwargs) -> SimpleNamespace:
         """Create an object with attributes matching all the json fields. Notify about unrecognized fields."""
@@ -69,7 +71,7 @@ class JsonSchema(Schema):
         :raises: ValidationError if the json object does not conform to the schema
         """
         try:
-            return cls().load(json_obj) # type: ignore[return-value] since post_load will return SimpleNamespace
+            return cls().load(json_obj)  # type: ignore[return-value] since post_load will return SimpleNamespace
         except ValidationError as err:
             logger.error(f"{cls} validation error:")
             logger.error(umbi.json_to_string(err.messages))
@@ -134,8 +136,9 @@ class TransitionSystemSchema(JsonSchema):
         validate=validate.OneOf(["double", "rational", "double-interval", "rational-interval"]),
     )
 
+
 class AnnotationSchema(JsonSchema):
-    """ An annotation schema. """
+    """An annotation schema."""
 
     alias = fields.String(data_key="alias", required=False)
     description = fields.String(data_key="description", required=False)
@@ -166,25 +169,21 @@ class PaddingSchema(JsonSchema):
 class VariableSchema(JsonSchema):
     name = fields.String(data_key="name", required=True)
     type = fields.String(
-        data_key="type",
-        required=True,
-        validate=validate.OneOf(["bool", "int", "uint", "double", "rational", "string"])
+        data_key="type", required=True, validate=validate.OneOf(["bool", "int", "uint", "double", "rational", "string"])
     )
     size = FieldUint(data_key="size", required=False)
-    lower = fields.Float(data_key = "lower", required=False)
-    upper = fields.Float(data_key = "upper", required=False)
-    offset = fields.Float(data_key = "offset", required=False)
+    lower = fields.Float(data_key="lower", required=False)
+    upper = fields.Float(data_key="upper", required=False)
+    offset = fields.Float(data_key="offset", required=False)
 
-        
+
 class StateValuationsSchema(JsonSchema):
     alignment = FieldUint(required=True)
-    variables = fields.List(
-        fields.Raw(), required=True
-    )
+    variables = fields.List(fields.Raw(), required=True)
 
     @validates("variables")
     def validate_variables(self, value):
-        if not isinstance(value, list): # is this necessary?
+        if not isinstance(value, list):  # is this necessary?
             raise ValidationError("variables must be a list")
         for v in value:
             if not isinstance(v, dict):
@@ -204,8 +203,11 @@ class StateValuationsSchema(JsonSchema):
 
 
 class AnnotationsSchema(JsonSchema):
-    """ A schema annotations. """
-    rewards = fields.Dict(keys=fields.String(), values=fields.Nested(AnnotationSchema), data_key="rewards", required=False)
+    """A schema annotations."""
+
+    rewards = fields.Dict(
+        keys=fields.String(), values=fields.Nested(AnnotationSchema), data_key="rewards", required=False
+    )
     aps = fields.Dict(keys=fields.String(), values=fields.Nested(AnnotationSchema), data_key="aps", required=False)
     state_valuations = fields.Nested(StateValuationsSchema, data_key="state-valuations", required=False)
 
@@ -241,6 +243,7 @@ class UmbIndexSchema(JsonSchema):
         obj.annotations = AnnotationsSchema.empty_object()
         return obj
 
+
 class UmbIndex:
     """A high-level representation of the .umb index file. This is basically UmbIndexSchema, but with a more convenient interface."""
 
@@ -253,29 +256,50 @@ class UmbIndex:
         self.annotations = AnnotationsSchema.empty_object()
 
     @classmethod
-    def from_json(cls, json_obj : umbi.JsonLike) -> "UmbIndex":
+    def from_json(cls, json_obj: umbi.JsonLike) -> "UmbIndex":
         """Parse from a json object."""
         info = UmbIndexSchema.from_json(json_obj)
         obj = cls()
-        for field in ["format_version", "format_revision", "model_data", "file_data", "transition_system", "annotations"]:
+        for field in [
+            "format_version",
+            "format_revision",
+            "model_data",
+            "file_data",
+            "transition_system",
+            "annotations",
+        ]:
             setattr(obj, field, getattr(info, field))
         return obj
 
     def copy(self) -> "UmbIndex":
         """Create a shallow copy."""
         other = UmbIndex()
-        for field in ["format_version", "format_revision", "model_data", "file_data", "transition_system", "annotations"]:
+        for field in [
+            "format_version",
+            "format_revision",
+            "model_data",
+            "file_data",
+            "transition_system",
+            "annotations",
+        ]:
             setattr(other, field, getattr(self, field))
         return other
 
-    def to_json(self, use_this_tool_file_data : bool = False, remove_none : bool = True) -> umbi.JsonLike:
+    def to_json(self, use_this_tool_file_data: bool = False, remove_none: bool = True) -> umbi.JsonLike:
         """
         Convert to a json object.
         :param use_this_tool_file_data: if True, the file-data field will be set to the values corresponding to this tool
         :param remove_none: if True, all null values will be removed from the json object
         """
         info = UmbIndexSchema().empty_object()
-        for field in ["format_version", "format_revision", "model_data", "file_data", "transition_system", "annotations"]:
+        for field in [
+            "format_version",
+            "format_revision",
+            "model_data",
+            "file_data",
+            "transition_system",
+            "annotations",
+        ]:
             setattr(info, field, getattr(self, field))
         if use_this_tool_file_data:
             info.file_data = FileDataSchema.this_tool_object()
@@ -287,5 +311,3 @@ class UmbIndex:
     def __str__(self) -> str:
         """Convert to a string (json format)."""
         return umbi.io.json_to_string(self.to_json())
-
-

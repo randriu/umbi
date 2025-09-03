@@ -1,14 +1,17 @@
-from csv import reader
 import logging
+from csv import reader
+
 logger = logging.getLogger(__name__)
 
-import umbi
 from enum import Enum
 from types import SimpleNamespace
 
+import umbi
+
 
 class UmbFile(Enum):
-    """ A list of common files expected in a umbfile. Each entry is a tuple of (filename, filetype, required)."""
+    """A list of common files expected in a umbfile. Each entry is a tuple of (filename, filetype)."""
+
     INDEX_JSON = ("index.json", "json")
 
     INITIAL_STATES = ("initial-states.bin", "vector[bool]")
@@ -23,16 +26,17 @@ class UmbFile(Enum):
     CHOICE_TO_ACTION = ("choice-to-action.bin", "vector[uint32]")
     ACTION_TO_ACTION_STRING = ("action-to-action-string.bin", "csr")
     ACTION_STRINGS = ("action-strings.bin", "bytes")
-    
+
     BRANCH_TO_TARGET = ("branch-to-target.bin", "vector[uint64]")
     BRANCH_TO_PROBABILITY = ("branch-to-probability.bin", "csr")
     BRANCH_PROBABILITIES = ("branch-probabilities.bin", "bytes")
 
+
 class ExplicitUmb:
-    """Class for an explicit representation of a umbfile."""
+    """Class for an explicit representation of a umbfile. The goal of this class is to have all the data is stored in numpy arrays and lists."""
 
     def __init__(self):
-        self.index : umbi.UmbIndex = umbi.UmbIndex()
+        self.index: umbi.UmbIndex = umbi.UmbIndex()
 
         self.initial_states = None
         self.state_to_choice = None
@@ -48,14 +52,13 @@ class ExplicitUmb:
         self.branch_to_target = None
         self.branch_probabilities = None
 
-        self.rewards = dict[str,SimpleNamespace]()
-        self.aps = dict[str,SimpleNamespace]()
+        self.rewards = None
+        self.aps = None
         self.state_valuations = None
 
     def validate(self):
-        #TODO implement
+        # TODO implement
         logger.debug("UMB validation requested but is not implemented yet")
-        
 
 
 class UmbReader(umbi.io.TarReader):
@@ -64,12 +67,12 @@ class UmbReader(umbi.io.TarReader):
         # to keep track of which files were read
         self.filename_read = {filename: False for filename in self.filenames}
 
-    def read_file(self, filename: str, required : bool = False) -> bytes | None:
+    def read_file(self, filename: str, required: bool = False) -> bytes | None:
         """Read raw bytes from a specific file in the tarball. Mark the file as read."""
         if filename in self.filenames:
             self.filename_read[filename] = True
-        return super().read_file(filename,required)
-    
+        return super().read_file(filename, required)
+
     def warn_about_unread_files(self):
         """Print warning about unread files from the tarfile, if such exist."""
         unread_files = [f for f, read in self.filename_read.items() if not read]
@@ -77,7 +80,7 @@ class UmbReader(umbi.io.TarReader):
             for f in unread_files:
                 logger.warning(f"umbfile contains unrecognized file: {f}")
 
-    def read_common(self, file: UmbFile, required : bool = False):
+    def read_common(self, file: UmbFile, required: bool = False):
         filename, file_type = file.value
         if file_type == "json":
             return self.read_json(filename, required=required)
@@ -91,7 +94,7 @@ class UmbReader(umbi.io.TarReader):
         else:
             raise ValueError(f"unrecognized file type {file_type} for file {filename}")
 
-    def read_common_csr(self, file : UmbFile, value_type : str, file_csr : UmbFile, required : bool = False):
+    def read_common_csr(self, file: UmbFile, value_type: str, file_csr: UmbFile, required: bool = False):
         csr_required = False
         if value_type == "string":
             csr_required = True
@@ -99,8 +102,8 @@ class UmbReader(umbi.io.TarReader):
         chunk_ranges = self.read_common(file_csr, required=csr_required)
         return umbi.io.bytes_to_vector(bytes, value_type, chunk_ranges=chunk_ranges)
 
-    #TODO make annotation a dedicated class
-    def read_annotation(self, label: str, annotation_dict: dict[str,SimpleNamespace] | None):
+    # TODO make annotation a dedicated class
+    def read_annotation(self, label: str, annotation_dict: dict[str, SimpleNamespace] | None):
         """
         Read annotation files. The values from the files will be stored in the corresponding annotation object as a new dictionary mapping applies-to -> values
         :param label: annotation label, usually one of ["rewards","aps"]
@@ -116,7 +119,7 @@ class UmbReader(umbi.io.TarReader):
                 annotation.values[applies] = umbi.io.bytes_to_vector(values, annotation.type, chunk_ranges=to_value)
 
     def read_state_valuations(self, state_valuations: dict[str, object] | None):
-        #TODO implement
+        # TODO implement
         if state_valuations is None:
             return
         logger.warning("state valuations import is not implemented yet")
@@ -135,7 +138,9 @@ class UmbReader(umbi.io.TarReader):
 
         umb.markovian_states = self.read_common(UmbFile.MARKOVIAN_STATES)
         if umb.index.transition_system.exit_rate_type is not None:
-            umb.state_exit_rate = self.read_common_csr(UmbFile.EXIT_RATES, umb.index.transition_system.exit_rate_type, UmbFile.STATE_TO_EXIT_RATE)
+            umb.state_exit_rate = self.read_common_csr(
+                UmbFile.EXIT_RATES, umb.index.transition_system.exit_rate_type, UmbFile.STATE_TO_EXIT_RATE
+            )
 
         umb.choice_to_branch = self.read_common(UmbFile.CHOICE_TO_BRANCH)
         umb.choice_to_action = self.read_common(UmbFile.CHOICE_TO_ACTION)
@@ -143,7 +148,11 @@ class UmbReader(umbi.io.TarReader):
 
         umb.branch_to_target = self.read_common(UmbFile.BRANCH_TO_TARGET)
         if umb.index.transition_system.branch_probability_type is not None:
-            umb.branch_probabilities = self.read_common_csr(UmbFile.BRANCH_PROBABILITIES, umb.index.transition_system.branch_probability_type, UmbFile.BRANCH_TO_PROBABILITY)
+            umb.branch_probabilities = self.read_common_csr(
+                UmbFile.BRANCH_PROBABILITIES,
+                umb.index.transition_system.branch_probability_type,
+                UmbFile.BRANCH_TO_PROBABILITY,
+            )
 
         self.read_annotation("rewards", umb.index.annotations.rewards)
         self.read_annotation("aps", umb.index.annotations.aps)
@@ -157,7 +166,7 @@ class UmbReader(umbi.io.TarReader):
 
 class UmbWriter(umbi.io.TarWriter):
 
-    def add_common(self, file:UmbFile, data, required : bool = False):
+    def add_common(self, file: UmbFile, data, required: bool = False):
         if data is None:
             if required:
                 raise ValueError(f"missing required data for {file}")
@@ -175,17 +184,16 @@ class UmbWriter(umbi.io.TarWriter):
         else:
             raise ValueError(f"unrecognized file type {file_type} for file {filename}")
 
-    def add_common_csr(self, file : UmbFile, data, value_type : str, file_csr : UmbFile, required : bool = False):
+    def add_common_csr(self, file: UmbFile, data, value_type: str, file_csr: UmbFile, required: bool = False):
         if data is None:
             if required:
                 raise ValueError(f"missing required data for {file}")
             return
-        filename,_ = file.value
-        filename_csr,_ = file_csr.value
+        filename, _ = file.value
+        filename_csr, _ = file_csr.value
         self.add_vector(filename, data, value_type, filename_csr=filename_csr)
 
-
-    def add_annotation(self, label: str, annotation_dict: dict[str,SimpleNamespace] | None):
+    def add_annotation(self, label: str, annotation_dict: dict[str, SimpleNamespace] | None):
         """
         Read annotation files.
         :param label: annotation label, usually one of ["rewards","aps"]
@@ -194,7 +202,7 @@ class UmbWriter(umbi.io.TarWriter):
         if annotation_dict is None:
             return
         for name, annotation in annotation_dict.items():
-            for applies,values in annotation.values.items():
+            for applies, values in annotation.values.items():
                 prefix = f"annotations/{label}/{name}/for-{applies}"
                 self.add_vector(f"{prefix}/values.bin", values, annotation.type, filename_csr=f"{prefix}/to-values.bin")
 
@@ -210,14 +218,24 @@ class UmbWriter(umbi.io.TarWriter):
         self.add_common(UmbFile.INDEX_JSON, umb.index.to_json(), required=True)
         self.add_common(UmbFile.INITIAL_STATES, umb.initial_states, required=True)
         self.add_common(UmbFile.STATE_TO_CHOICE, umb.state_to_choice)
-        self.add_common(UmbFile.STATE_TO_PLAYER, umb.state_to_player)    
+        self.add_common(UmbFile.STATE_TO_PLAYER, umb.state_to_player)
         self.add_common(UmbFile.MARKOVIAN_STATES, umb.markovian_states)
-        self.add_common_csr(UmbFile.EXIT_RATES, umb.state_exit_rate, umb.index.transition_system.exit_rate_type, UmbFile.STATE_TO_EXIT_RATE)
+        self.add_common_csr(
+            UmbFile.EXIT_RATES,
+            umb.state_exit_rate,
+            umb.index.transition_system.exit_rate_type,
+            UmbFile.STATE_TO_EXIT_RATE,
+        )
         self.add_common(UmbFile.CHOICE_TO_BRANCH, umb.choice_to_branch)
         self.add_common(UmbFile.CHOICE_TO_ACTION, umb.choice_to_action)
         self.add_common_csr(UmbFile.ACTION_STRINGS, umb.action_strings, "string", UmbFile.ACTION_TO_ACTION_STRING)
         self.add_common(UmbFile.BRANCH_TO_TARGET, umb.branch_to_target)
-        self.add_common_csr(UmbFile.BRANCH_PROBABILITIES, umb.branch_probabilities, umb.index.transition_system.branch_probability_type, UmbFile.BRANCH_TO_PROBABILITY)
+        self.add_common_csr(
+            UmbFile.BRANCH_PROBABILITIES,
+            umb.branch_probabilities,
+            umb.index.transition_system.branch_probability_type,
+            UmbFile.BRANCH_TO_PROBABILITY,
+        )
         self.add_annotation("rewards", umb.index.annotations.rewards)
         self.add_annotation("aps", umb.index.annotations.aps)
         self.add_state_valuations(umb.index.annotations.state_valuations)

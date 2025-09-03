@@ -4,13 +4,15 @@ Utilities for reading/wrting Tar archives.
 
 import io
 import logging
+
 logger = logging.getLogger(__name__)
 import tarfile
-
 from typing import Optional
+
 from .bytes import bytes_to_vector, vector_to_bytes
 from .json import JsonLike, bytes_to_json, json_to_bytes
 from .vector import *
+
 
 class TarReader:
     """An auxiliary class to simplify tar reading and to keep track of (un)used files."""
@@ -44,7 +46,7 @@ class TarReader:
         """List of filenames in the tarball."""
         return list(self.filename_data.keys())
 
-    def read_file(self, filename: str, required : bool = False) -> bytes | None:
+    def read_file(self, filename: str, required: bool = False) -> bytes | None:
         """Read raw bytes from a specific file in the tarball"""
         if filename not in self.filenames:
             if not required:
@@ -53,21 +55,23 @@ class TarReader:
                 raise KeyError(f"tar archive {self.tarpath} has no file {filename}")
         return self.filename_data[filename]
 
-    def read_json(self, filename: str, required : bool = False) -> JsonLike | None:
+    def read_json(self, filename: str, required: bool = False) -> JsonLike | None:
         """Read a JSON-like object from a specific file in the tarball."""
-        data = self.read_file(filename,required)
+        data = self.read_file(filename, required)
         if data is None:
             return None
         return bytes_to_json(data)
 
-    def read_vector(self, filename: str, value_type: str, required : bool = False) -> list | None:
+    def read_vector(self, filename: str, value_type: str, required: bool = False) -> list | None:
         """Read a vector of items from a specific file in the tarball, optionally converting ranges to row starts."""
-        data = self.read_file(filename,required)
+        data = self.read_file(filename, required)
         if data is None:
             return None
         return bytes_to_vector(data, value_type)
 
-    def read_csr(self, filename: str, value_type: str = "uint64", required : bool = False) -> list[tuple[int,int]] | None:
+    def read_csr(
+        self, filename: str, value_type: str = "uint64", required: bool = False
+    ) -> list[tuple[int, int]] | None:
         """Read a CSR matrix from a specific file in the tarball."""
         assert value_type in ["uint32", "uint64"], "CSR format only supported for vectors of unsigned integers"
         vector = self.read_vector(filename, value_type, required=required)
@@ -110,21 +114,21 @@ class TarWriter:
         """Add a JSON file to the tarball."""
         self.add_file(filename, json_to_bytes(json_obj))
 
-    def add_vector(self, filename: str, vector: list, value_type: str, filename_csr : Optional[str] = None):
+    def add_vector(self, filename: str, vector: list, value_type: str, filename_csr: Optional[str] = None):
         """
         Add a file containing a vector of items to the tarball, optionally converting ranges to row starts.
         :param filename_csr: optional filename for the CSR representation of the vector
         """
-        data,chunk_ranges = vector_to_bytes(vector, value_type)
-        self.add_file(filename,data)
+        data, chunk_ranges = vector_to_bytes(vector, value_type)
+        self.add_file(filename, data)
         if chunk_ranges is not None:
             assert filename_csr is not None
             row_start = ranges_to_row_start(chunk_ranges)
-            csr_data,csr_ranges = vector_to_bytes(row_start, "uint64")
+            csr_data, csr_ranges = vector_to_bytes(row_start, "uint64")
             assert csr_ranges is None, "row_start should be a flat vector"
             self.add_file(filename_csr, csr_data)
 
-    def add_csr(self, filename: str, csr: list[tuple[int,int]], value_type: str = "uint64"):
+    def add_csr(self, filename: str, csr: list[tuple[int, int]], value_type: str = "uint64"):
         """Add a file containing a CSR matrix to the tarball."""
         assert value_type in ["uint32", "uint64"], "CSR format only supported for integer vectors"
         row_start = ranges_to_row_start(csr)

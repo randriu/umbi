@@ -2,6 +2,7 @@
 Auxiliary vector operations.
 """
 
+
 def row_start_to_ranges(row_start: list) -> list[tuple[int, int]]:
     """Convert row start indices to ranges."""
     ranges = []
@@ -38,5 +39,3 @@ def bitvector_to_indices(bitvector: list[bool]) -> list[int]:
     :param bitvector: a list of bools
     """
     return [i for i, bit in enumerate(bitvector) if bit]
-
-

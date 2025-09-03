@@ -3,11 +3,13 @@ Utilities for (de)serializing binary strings.
 """
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-from typing import Optional
-import struct
 import fractions
+import struct
+from typing import Optional
+
 
 def assert_key_in_dict(table: dict, key: object, desc: str):
     if key not in table:
@@ -54,6 +56,7 @@ def endianness_to_struct_format(little_endian: bool) -> str:
     """
     return "<" if little_endian else ">"
 
+
 def bytes_to_string(data: bytes) -> str:
     """Convert a binary string to a utf-8 string."""
     return data.decode("utf-8")
@@ -68,6 +71,7 @@ def bytes_to_bitvector(bitvector_bytes: bytes) -> list[bool]:
     """Convert a bytestring representing a bitvector into a list of booleans."""
     return [(byte >> bit) & 1 == 1 for byte in bitvector_bytes for bit in range(8)]
 
+
 def bitvector_to_bytes(bitvector: list[bool]) -> bytes:
     """Convert a list of booleans representing a bitvector into a bytestring."""
     byte_array = bytearray()
@@ -77,7 +81,7 @@ def bitvector_to_bytes(bitvector: list[bool]) -> bytes:
     return bytes(byte_array)
 
     # TODO respect endianness
-    
+
     # drop trailing zeros?
 
     # pad vector up to 64 bits
@@ -92,8 +96,9 @@ def bitvector_to_bytes(bitvector: list[bool]) -> bytes:
     # return bitmask
 
 
-
-def bytes_to_value(data: bytes, value_type : str, little_endian: bool = True) -> int | float | fractions.Fraction | str | tuple :
+def bytes_to_value(
+    data: bytes, value_type: str, little_endian: bool = True
+) -> int | float | fractions.Fraction | str | tuple:
     """
     Convert a binary string to a single value of the given type.
     :param value_type: one of {int32|uint32|int64|uint64|double|rational}[-interval]
@@ -125,7 +130,9 @@ def bytes_to_value(data: bytes, value_type : str, little_endian: bool = True) ->
     return struct.unpack(f"{endian_format}{type_format}", data)[0]
 
 
-def value_to_bytes(value: int | float | tuple | fractions.Fraction | str, value_type: str, little_endian: bool = True) -> bytes:
+def value_to_bytes(
+    value: int | float | tuple | fractions.Fraction | str, value_type: str, little_endian: bool = True
+) -> bytes:
     """
     Convert a value of a given type to a bytestring.
     :param value_type: value data type, either string or one of {int32|uint32|int64|uint64|double|rational}[-interval]
@@ -145,7 +152,7 @@ def value_to_bytes(value: int | float | tuple | fractions.Fraction | str, value_
     if value_type == "rational":
         assert isinstance(value, fractions.Fraction), "rational value must be a Fraction"
         # we currently support fixed-size numerator and denominator
-        #TODO support for arbitrary-precision rationals
+        # TODO support for arbitrary-precision rationals
         numerator_bytes = value_to_bytes(value.numerator, "int64", little_endian)
         denominator_bytes = value_to_bytes(value.denominator, "uint64", little_endian)
         return numerator_bytes + denominator_bytes
@@ -156,7 +163,7 @@ def value_to_bytes(value: int | float | tuple | fractions.Fraction | str, value_
     return struct.pack(f"{endian_format}{type_format}", value)
 
 
-def bytes_into_chunk_ranges(data : bytes, chunk_ranges : list[tuple[int, int]]) -> list[bytes]:
+def bytes_into_chunk_ranges(data: bytes, chunk_ranges: list[tuple[int, int]]) -> list[bytes]:
     """
     Split bytestring into chunks according to chunk ranges.
     :param values: bytes containing concatenated values
@@ -165,7 +172,8 @@ def bytes_into_chunk_ranges(data : bytes, chunk_ranges : list[tuple[int, int]]) 
     """
     return [data[start:end] for start, end in chunk_ranges]
 
-def bytes_into_num_chunks(data : bytes, num_chunks : int) -> list[bytes]:
+
+def bytes_into_num_chunks(data: bytes, num_chunks: int) -> list[bytes]:
     """Split bytestring into evenly sized chunks."""
     assert num_chunks >= 0, "num_chunks must be a positive number"
     assert len(data) % num_chunks == 0, "len(data) must be divisible by num_chunks when item_ranges are not provided"
@@ -174,7 +182,9 @@ def bytes_into_num_chunks(data : bytes, num_chunks : int) -> list[bytes]:
     return bytes_into_chunk_ranges(data, chunk_ranges)
 
 
-def bytes_to_vector(data: bytes, value_type: str, chunk_ranges: Optional[list[tuple[int, int]]] = None, little_endian: bool = True) -> list:
+def bytes_to_vector(
+    data: bytes, value_type: str, chunk_ranges: Optional[list[tuple[int, int]]] = None, little_endian: bool = True
+) -> list:
     """
     Decode a binary string as a list of numbers.
     :param value_type: vector element type, either bool, string or one of {int32|uint32|int64|uint64|double|rational}[-interval]
@@ -192,13 +202,11 @@ def bytes_to_vector(data: bytes, value_type: str, chunk_ranges: Optional[list[tu
         chunks = bytes_into_num_chunks(data, num_chunks)
         return [bytes_to_value(chunk, value_type, little_endian) for chunk in chunks]
 
-    return [bytes_to_value(data[start:end], value_type, little_endian) for start,end in chunk_ranges]
+    return [bytes_to_value(data[start:end], value_type, little_endian) for start, end in chunk_ranges]
 
 
 def vector_to_bytes(
-    vector: list,
-    value_type: str,
-    little_endian: bool = True
+    vector: list, value_type: str, little_endian: bool = True
 ) -> tuple[bytes, Optional[list[tuple[int, int]]]]:
     """Encode a list of values as a binary string.
     :param value_type: vector element type, either bool, string or {int32|uint32|int64|uint64|double|rational}[-interval]
