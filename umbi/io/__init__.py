@@ -8,8 +8,10 @@ This sub-package provides:
 
 from .json import JsonLike, json_remove_none, json_to_string, string_to_json, json_show_debug
 from .tar import TarReader, TarWriter
+from .vector import *
+from .bytes import bytes_to_vector, vector_to_bytes
 
 __all__ = [
     "JsonLike", "json_remove_none", "json_to_string", "string_to_json", "json_show_debug",
-    "TarReader", "TarWriter"
+    "TarReader", "TarWriter", "bytes_to_vector", "vector_to_bytes"
 ]

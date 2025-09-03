@@ -19,7 +19,8 @@ import umbi
 @click.option("--export-umb", type=click.Path(), required=False, help=".umb filepath to export")
 def main(log_level, import_umb, export_umb):
 
-    umbi.setup_logging(level=getattr(logging, log_level))
+    umbi.setup_logging()
+    umbi.set_log_level(getattr(logging, log_level))
     logger.info(f"this is {umbi.__toolname__} v.{umbi.__version__}")
 
     ats = None

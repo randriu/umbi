@@ -1,22 +1,19 @@
-import umbi.io
-
 import umbi
+import os
+
 import logging
-umbi.set_log_level(level=logging.DEBUG)
+umbi.set_log_level(level=logging.WARNING)
 
-umbfile = "../examples/_temp_umb_files/examples/dice/dice.umb"
-# reader = umbi.io.TarReader(umbfile)
+def try_file(umbpath : str):
+    try:
+        umb = umbi.read_umb(umbpath)
+        umbi.write_umb(umb, "out.umb")
+    except Exception as e:
+        logging.error(f"Error processing {umbpath}: {e}")
 
-ats = umbi.read_umb(umbfile)
-# json_obj = reader.read_json("index.json")
-# print(umbi.json_to_string(json_obj))
-# umbi_index = umbi.UmbIndex.from_json(json_obj)
-# print(umbi_index.annotations.rewards)
-# print(umbi_index.annotations.variables)
-
-# print(umbi_index)
-
-# jsonlike = umbi_index.to_json()
-# print(jsonlike)
-
-# reader.warn_unread_files()
+test_folder = "../_temp_umb_files/examples/"
+for root, dirs, files in os.walk(test_folder):
+    for filename in files:
+        if filename.endswith(".umb"):
+            umbfile = os.path.join(root, filename)
+            try_file(umbfile)

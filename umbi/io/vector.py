@@ -2,18 +2,16 @@
 Auxiliary vector operations.
 """
 
-from .bytes import bytes_to_string, string_to_bytes
-
-def row_start_to_ranges(row_start: list) -> list:
+def row_start_to_ranges(row_start: list) -> list[tuple[int, int]]:
     """Convert row start indices to ranges."""
     ranges = []
     num_rows = len(row_start) - 1
     for row in range(num_rows):
-        ranges.append(list(range(row_start[row], row_start[row + 1])))
+        ranges.append((row_start[row], row_start[row + 1]))
     return ranges
 
 
-def ranges_to_row_start(ranges: list) -> list:
+def ranges_to_row_start(ranges: list[tuple[int, int]]) -> list[int]:
     """Convert ranges to row start indices."""
     row_start = [interval[0] for interval in ranges]
     row_start.append(ranges[-1][-1] + 1)
@@ -40,3 +38,5 @@ def bitvector_to_indices(bitvector: list[bool]) -> list[int]:
     :param bitvector: a list of bools
     """
     return [i for i, bit in enumerate(bitvector) if bit]
+
+

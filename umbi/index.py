@@ -46,7 +46,7 @@ class JsonSchema(Schema):
         """Create an object with attributes matching all the json fields. Notify about unrecognized fields."""
         extra_fields = set(data.keys()) - set(self.fields.keys())
         for f in extra_fields:
-            logger.warning(f"unrecognized field encountered and ignored: {f}")
+            logger.warning(f"JSON contains unrecognized field: {f}")
 
         for field in self.fields:
             if field not in data:
@@ -213,9 +213,9 @@ class AnnotationsSchema(JsonSchema):
     def empty_object(cls):
         """Create an empty object with attributes (set to None) corresponding to the fields of schema."""
         obj = super().empty_object()
-        obj.rewards = None
-        obj.aps = None
-        obj.state_valuations = None
+        obj.rewards = dict[str, SimpleNamespace]()
+        obj.aps = dict[str, SimpleNamespace]()
+        obj.state_valuations = dict[str, SimpleNamespace]()
         return obj
 
 
