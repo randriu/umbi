@@ -117,7 +117,7 @@ class UmbReader(umbi.io.TarReader):
         return
 
     def read_umb(self):  # type: ignore
-        logger.info(f"loading umbfile from ${self.tarpath} ...")
+        logger.info(f"loading umbfile from {self.tarpath} ...")
         umb = ExplicitUmb()
 
         json_obj = self.read_common(UmbFile.INDEX_JSON, required=True)

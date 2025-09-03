@@ -37,8 +37,8 @@ include-package-data = true
 umbi = "umbi.__main__:main"
 
 [tool.umbi]
-format_version = "0"
-format_revision = "1"
+format_version = 0
+format_revision = 1
 
 [tool.bumpver]
 current_version = "0.0.3"

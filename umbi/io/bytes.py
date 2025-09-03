@@ -11,9 +11,7 @@ import struct
 from typing import Optional
 
 
-def assert_key_in_dict(table: dict, key: object, desc: str):
-    if key not in table:
-        raise ValueError(f"{desc} must be one of {table} but is {key}")
+        raise ValueError(f"{desc} must be one of {list(table.keys())} but is {key}")
 
 
 def value_type_to_struct_format(value_type: str) -> str:
