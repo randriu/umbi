@@ -15,7 +15,7 @@ def row_start_to_ranges(row_start: list) -> list[tuple[int, int]]:
 def ranges_to_row_start(ranges: list[tuple[int, int]]) -> list[int]:
     """Convert ranges to row start indices."""
     row_start = [interval[0] for interval in ranges]
-    row_start.append(ranges[-1][-1] + 1)
+    row_start.append(ranges[-1][-1])
     assert len(row_start) == len(ranges) + 1
     return row_start
 
