@@ -10,51 +10,6 @@ import fractions
 import struct
 from typing import Optional
 
-def assert_key_in_dict(table: dict, key: object, desc: str):
-    if key not in table:
-        raise ValueError(f"{desc} must be one of {list(table.keys())} but is {key}")
-
-
-def value_type_to_struct_format(value_type: str) -> str:
-    """Convert a value type to a formatting string for struct."""
-    table = {
-        "int32": "i",
-        "int64": "q",
-        "uint32": "I",
-        "uint64": "Q",
-        "double": "d",
-    }
-    assert_key_in_dict(table, value_type, "value type")
-    return table[value_type]
-
-
-def value_type_to_size(value_type: str) -> int:
-    """Map value type to its size."""
-    if "-interval" in value_type:
-        base_value_type = value_type.replace("-interval", "")
-        return 2 * value_type_to_size(base_value_type)
-    if value_type == "rational":
-        # we currently support fixed-size numerator and denominator
-        # TODO: support arbitrary-precision rationals
-        return value_type_to_size("int64") + value_type_to_size("uint64")
-    table = {
-        "int32": 4,
-        "int64": 8,
-        "uint32": 4,
-        "uint64": 8,
-        "double": 8,
-    }
-    assert_key_in_dict(table, value_type, "value type")
-    return table[value_type]
-
-
-def endianness_to_struct_format(little_endian: bool) -> str:
-    """
-    Convert endianness flag to a formatting string for struct.
-    :param little_endian: True for little-endian, False for big-endian
-    """
-    return "<" if little_endian else ">"
-
 
 def bytes_to_string(data: bytes) -> str:
     """Convert a binary string to a utf-8 string."""
@@ -79,20 +34,27 @@ def bitvector_to_bytes(bitvector: list[bool]) -> bytes:
         byte_array.append(byte)
     return bytes(byte_array)
 
-    # TODO respect endianness
 
-    # drop trailing zeros?
+def endianness_to_struct_format(little_endian: bool) -> str:
+    """Convert endianness flag to a formatting string for struct."""
+    return "<" if little_endian else ">"
 
-    # pad vector up to 64 bits
-    # target_pad = 64
-    # num_pad = (target_pad - (len(vector) % target_pad)) % target_pad
-    # vector = vector + [False] * num_pad
-    # bitmask = b""
-    # for byte_index in range(len(vector) // 8):
-    #     bits = vector[byte_index * 8 : byte_index * 8 + 8]
-    #     byte_int = sum((1 << i) for i, bit in enumerate(bits) if bit)
-    #     bitmask += byte_int.to_bytes(1, byteorder="little")
-    # return bitmask
+def assert_key_in_dict(table: dict, key, desc):
+    if key not in table:
+        raise ValueError(f"{desc} must be one of {list(table.keys())} but is {key}")
+
+def value_type_to_struct_format(value_type: str) -> str:
+    """Convert a value type to a formatting string for struct."""
+    table = {
+        "int32": "i",
+        "int64": "q",
+        "uint32": "I",
+        "uint64": "Q",
+        "double": "d",
+    }
+    assert_key_in_dict(table, value_type, "value type")
+    return table[value_type]
+
 
 
 def bytes_to_value(
@@ -100,7 +62,7 @@ def bytes_to_value(
 ) -> int | float | fractions.Fraction | str | tuple:
     """
     Convert a binary string to a single value of the given type.
-    :param value_type: one of {int32|uint32|int64|uint64|double|rational}[-interval]
+    :param value_type: string or one of {int32|uint32|int64|uint64|double|rational}[-interval]
     :return: a pair of left and right values for interval types, or a single value otherwise
     """
 
@@ -129,32 +91,88 @@ def bytes_to_value(
     return struct.unpack(f"{endian_format}{type_format}", data)[0]
 
 
+def normalize_rational(value: fractions.Fraction) -> fractions.Fraction:
+    """Ensure that the denominator of a rational number is non-negative."""
+    if value.denominator < 0:
+        value = fractions.Fraction(-value.numerator, -value.denominator)
+    return value
+
+
+def standard_value_type_size(value_type: str) -> int:
+    """Return the number of bytes needed to represent a value of the given type."""
+    if "-interval" in value_type:
+        base_value_type = value_type.replace("-interval", "")
+        return 2 * standard_value_type_size(base_value_type)
+    if value_type == "rational":
+        # for rationals, the standard size is 8+8 bytes
+        return standard_value_type_size("int64") + standard_value_type_size("uint64")
+    table = {
+        "int32": 4,
+        "int64": 8,
+        "uint32": 4,
+        "uint64": 8,
+        "double": 8,
+    }
+    assert_key_in_dict(table, value_type, "value type")
+    return table[value_type]
+
+
+def integer_value_size(value: int) -> int:
+    """Return the number of bytes needed to represent an integer value, rounded up to the nearest multiple of 8."""
+    num_bytes = (value.bit_length() + 7) // 8
+    if num_bytes % 8 != 0:
+        num_bytes += 8 - (num_bytes % 8)
+    return num_bytes
+
+
+def rational_value_size(value: fractions.Fraction) -> int:
+    """Return the number of bytes needed to represent a rational value."""
+    return 2*max(integer_value_size(value.numerator), integer_value_size(value.denominator))
+
+
+def rational_to_bytes(value: fractions.Fraction, max_integer_size: Optional[int] = None, little_endian: bool = True) -> bytes:
+    """
+    Convert a rational number to a bytestring. Both numberator and denominator are encoded as signed and unsigned integers, respectively, and have the same size.
+    :param max_integer_size: (optional) maximum size in bytes for numerator and denominator; if not provided, the size is determined automatically
+    """
+    value = normalize_rational(value)
+    if max_integer_size is None:
+        max_integer_size = rational_value_size(value) // 2
+    byteorder = "little" if little_endian else "big"
+    numerator_bytes = value.numerator.to_bytes(max_integer_size, byteorder=byteorder, signed=True)
+    denominator_bytes = value.denominator.to_bytes(max_integer_size, byteorder=byteorder, signed=False)
+    return numerator_bytes + denominator_bytes
+
+
 def value_to_bytes(
     value: int | float | tuple | fractions.Fraction | str, value_type: str, little_endian: bool = True
 ) -> bytes:
     """
     Convert a value of a given type to a bytestring.
-    :param value_type: value data type, either string or one of {int32|uint32|int64|uint64|double|rational}[-interval]
+    :param value_type: either string or one of {int32|uint32|int64|uint64|double|rational}[-interval]
     """
 
     if value_type == "string":
         assert isinstance(value, str), "string value must be a str"
         return string_to_bytes(value)
 
+    if value_type == "rational":
+        assert isinstance(value, fractions.Fraction), "rational value must be a Fraction"
+        return rational_to_bytes(value, little_endian=little_endian)
+
     if "-interval" in value_type:
         assert isinstance(value, tuple) and len(value) == 2, "interval value must be a tuple of two values"
         base_value_type = value_type.replace("-interval", "")
-        lower = value_to_bytes(value[0], base_value_type, little_endian)
-        upper = value_to_bytes(value[1], base_value_type, little_endian)
+        if base_value_type != "rational":
+            lower = value_to_bytes(value[0], base_value_type, little_endian)
+            upper = value_to_bytes(value[1], base_value_type, little_endian)
+        else:
+            assert all(isinstance(v, fractions.Fraction) for v in value), "expected a pair of fractions"
+            # ensure both rationals use the same size for numerator and denominator
+            max_integer_size = max(rational_value_size(v) for v in value) // 2
+            lower = rational_to_bytes(value[0], max_integer_size, little_endian)
+            upper = rational_to_bytes(value[1], max_integer_size, little_endian)
         return lower + upper
-
-    if value_type == "rational":
-        assert isinstance(value, fractions.Fraction), "rational value must be a Fraction"
-        # we currently support fixed-size numerator and denominator
-        # TODO support for arbitrary-precision rationals
-        numerator_bytes = value_to_bytes(value.numerator, "int64", little_endian)
-        denominator_bytes = value_to_bytes(value.denominator, "uint64", little_endian)
-        return numerator_bytes + denominator_bytes
 
     assert value_type in ["int32", "uint32", "int64", "uint64", "double"], "unexpected value type"
     type_format = value_type_to_struct_format(value_type)
@@ -163,18 +181,13 @@ def value_to_bytes(
 
 
 def bytes_into_chunk_ranges(data: bytes, chunk_ranges: list[tuple[int, int]]) -> list[bytes]:
-    """
-    Split bytestring into chunks according to chunk ranges.
-    :param values: bytes containing concatenated values
-    :param chunk_ranges: for each chunk, its (start, end) byte positions
-    :return: a list of binary strings
-    """
+    """Split bytestring into chunks according to chunk ranges."""
     return [data[start:end] for start, end in chunk_ranges]
 
 
 def bytes_into_num_chunks(data: bytes, num_chunks: int) -> list[bytes]:
     """Split bytestring into evenly sized chunks."""
-    assert num_chunks >= 0, "num_chunks must be a positive number"
+    assert num_chunks > 0, "num_chunks must be a positive number"
     assert len(data) % num_chunks == 0, "len(data) must be divisible by num_chunks when item_ranges are not provided"
     chunk_size = len(data) // num_chunks
     chunk_ranges = [(i * chunk_size, (i + 1) * chunk_size) for i in range(num_chunks)]
@@ -194,8 +207,11 @@ def bytes_to_vector(
         assert little_endian, "big-endianness for bitvectors is not implemented"
         return bytes_to_bitvector(data)
 
+    if len(data) == 0:
+        return []
+
     if chunk_ranges is None:
-        chunk_size = value_type_to_size(value_type)
+        chunk_size = standard_value_type_size(value_type)
         assert len(data) % chunk_size == 0, "len(data) must be divisible by the size of the value type"
         num_chunks = len(data) // chunk_size
         chunks = bytes_into_num_chunks(data, num_chunks)
@@ -210,8 +226,7 @@ def vector_to_bytes(
     """Encode a list of values as a binary string.
     :param value_type: vector element type, either bool, string or {int32|uint32|int64|uint64|double|rational}[-interval]
     :return: encoded binary string
-    :return: (optional) chunk ranges if non-trivial splitting is needed to split the resulting bytestring into chunks
-    :note: chunk ranges are currently returned only for strings
+    :return: (optional) chunk ranges if non-trivial splitting is needed to split the resulting bytestring into chunks, e.g. for strings or non-standard rationals
     """
     if len(vector) == 0:
         logger.warning("converting empty vector to bytes")
@@ -222,15 +237,14 @@ def vector_to_bytes(
         return (bitvector_to_bytes(vector), None)
 
     chunks = [value_to_bytes(item, value_type, little_endian) for item in vector]
-    bytestring = b"".join(chunks)
     chunk_ranges = None
-    if value_type == "string":
-        # strings may have different lengths, so we need to return chunk ranges
+    if value_type == "string" or any(len(chunk) != standard_value_type_size(value_type) for chunk in chunks):
         chunk_ranges = []
         current_pos = 0
         for chunk in chunks:
             chunk_size = len(chunk)
             chunk_ranges.append((current_pos, current_pos + chunk_size))
             current_pos += chunk_size
+    bytestring = b"".join(chunks)
 
     return bytestring, chunk_ranges

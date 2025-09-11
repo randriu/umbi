@@ -11,7 +11,7 @@ from typing import Optional
 
 from .bytes import bytes_to_vector, vector_to_bytes
 from .json import JsonLike, bytes_to_json, json_to_bytes
-from .vector import *
+from .csr import *
 
 
 def is_of_vector_type(filetype: str) -> bool:
@@ -80,8 +80,7 @@ class TarReader:
         if filetype == "json":
             return bytes_to_json(data)
         if filetype == "csr":
-            vector = bytes_to_vector(data, "uint64")
-            return row_start_to_ranges(vector)
+            return csr_to_ranges(bytes_to_vector(data, "uint64"))
         if is_of_vector_type(filetype):
             value_type = value_type_of(filetype)
             return bytes_to_vector(data, value_type)
@@ -154,7 +153,7 @@ class TarWriter:  #
         elif filetype == "json":
             data_out = json_to_bytes(data)
         elif filetype == "csr":
-            data_out, chunk_ranges = vector_to_bytes(ranges_to_row_start(data), "uint64")
+            data_out, chunk_ranges = vector_to_bytes(ranges_to_csr(data), "uint64")
             assert chunk_ranges is None, "unexpected chunk ranges"
         elif is_of_vector_type(filetype):
             value_type = value_type_of(filetype)
@@ -174,7 +173,7 @@ class TarWriter:  #
         data_out, chunk_ranges = vector_to_bytes(data, value_type)
         self.add_file(filename, data_out)
         if chunk_ranges is not None:
-            data_csr, csr_ranges = vector_to_bytes(ranges_to_row_start(chunk_ranges), "uint64")
+            data_csr, csr_ranges = vector_to_bytes(ranges_to_csr(chunk_ranges), "uint64")
             assert csr_ranges is None, "row_start should be a flat vector"
             assert isinstance(data_csr, bytes), "data_csr must be of type bytes"
             self.add_file(filename_csr, data_csr)
