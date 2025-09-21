@@ -11,7 +11,7 @@ from typing import Optional
 
 from .bytes import bytes_to_vector, vector_to_bytes
 from .json import JsonLike, bytes_to_json, json_to_bytes
-from .csr import *
+from ..vectors.csr import *
 
 
 def is_of_vector_type(filetype: str) -> bool:
@@ -25,7 +25,7 @@ def value_type_of(filetype: str) -> str:
 
 
 class TarReader:
-    """An auxiliary class to simplify tar reading and to keep track of (un)used files."""
+    """An auxiliary class to simplify tar reading."""
 
     @staticmethod
     def load_tar(tarpath: str) -> dict[str, bytes]:
@@ -33,7 +33,7 @@ class TarReader:
         Load all files from a tarball into memory.
         :return: a dictionary filename -> binary string
         """
-        # logger.debug(f"reading tarfile from {tarpath} ...")
+        logger.debug(f"loading tarfile from {tarpath} ...")
         filename_data = {}
         with tarfile.open(tarpath, mode="r:*") as tar:
             for member in tar.getmembers():
@@ -42,7 +42,7 @@ class TarReader:
                     if fileobj is None:
                         raise KeyError(f"Could not extract file {member.name} from {tarpath}")
                     filename_data[member.name] = fileobj.read()
-        # logger.debug(f"successfully read the tarfile")
+        logger.debug(f"successfully loaded the tarfile")
         return filename_data
 
     def __init__(self, tarpath: str):
@@ -69,7 +69,7 @@ class TarReader:
         """
         Read a file of a specific type.
         :param filename: name of the file to read
-        :param filetype: one of ["bytes", "json", "csr", "vector[X]"] where X is a value type not requiring CSR
+        :param filetype: one of ["bytes", "json", "csr", "vector[X]"]
         :param required: if True, raise an error if the file is not found
         """
         data = self.read_file(filename, required)
@@ -88,27 +88,21 @@ class TarReader:
             raise ValueError(f"unrecognized file type {filetype} for file {filename}")
 
     def read_filetype_csr(
-        self, filename: str, value_type: str, filename_csr: str, required: bool = False
+        self, filename: str, value_type: str, required: bool, filename_csr: str, required_csr: bool = False
     ) -> list | None:
         """
         Read a file containing a vector of values. Use an accompanying CSR file if needed.
         :param filename: name of the main file to read
         :param value_type: value type
-        :param filename_csr: name of the accompanying CSR file
         :param required: if True, raise an error if the main file is not found
+        :param filename_csr: name of the accompanying CSR file
+        :param required_csr: if True, raise an error if the CSR file is not found
         """
         data = self.read_file(filename, required)
         if data is None:
             return None
-        csr_required = False
-        if value_type == "string":
-            # require CSR file for strings
-            # later, we might require CSR for non-standard rationals
-            csr_required = True
-        chunk_ranges = None
-        if csr_required:
-            chunk_ranges = self.read_filetype(filename_csr, "csr", required=csr_required)
-            assert isinstance(chunk_ranges, list) or chunk_ranges is None
+        chunk_ranges = self.read_filetype(filename_csr, "csr", required=required_csr)
+        assert isinstance(chunk_ranges, list) or chunk_ranges is None
         return bytes_to_vector(data, value_type, chunk_ranges=chunk_ranges)
 
 
@@ -124,14 +118,14 @@ class TarWriter:  #
         :param filename_data: a dictionary filename -> binary string
         :param gzip: if True, the tarball file will be gzipped
         """
-        # logger.debug(f"writing tarfile {tarpath} ...")
+        logger.debug(f"writing tarfile {tarpath} ...")
         mode = "w" if not gzip else "w:gz"
         with tarfile.open(tarpath, mode=mode) as tar:
             for filename, data in filename_data.items():
                 tar_info = tarfile.TarInfo(name=filename)
                 tar_info.size = len(data)
                 tar.addfile(tar_info, std_io.BytesIO(data))
-        # logger.debug(f"successfully wrote the tarfile")
+        logger.debug(f"successfully wrote the tarfile")
 
     def __init__(self):
         self.filename_data = {}
@@ -165,7 +159,7 @@ class TarWriter:  #
         assert isinstance(data_out, bytes), "data_out must be of type bytes"
         self.add_file(filename, data_out)
 
-    def add_filetype_csr(self, filename: str, value_type: str, data, filename_csr: str, required: bool = False):
+    def add_filetype_csr(self, filename: str, value_type: str, data, required: bool, filename_csr: str):
         if data is None:
             if required:
                 raise ValueError(f"missing required data for {filename}")
@@ -173,10 +167,7 @@ class TarWriter:  #
         data_out, chunk_ranges = vector_to_bytes(data, value_type)
         self.add_file(filename, data_out)
         if chunk_ranges is not None:
-            data_csr, csr_ranges = vector_to_bytes(ranges_to_csr(chunk_ranges), "uint64")
-            assert csr_ranges is None, "row_start should be a flat vector"
-            assert isinstance(data_csr, bytes), "data_csr must be of type bytes"
-            self.add_file(filename_csr, data_csr)
+            self.add_filetype(filename_csr, "csr", chunk_ranges, required=True)
 
     def write(self, tarpath: str, gzip: bool = True):
         """Write all added files to a tarball."""

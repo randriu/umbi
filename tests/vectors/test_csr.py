@@ -1,5 +1,5 @@
 import pytest
-from umbi.io.csr import *
+from umbi.vectors.csr import *
 
 def test_is_vector_csr_valid():
     assert is_vector_csr([0, 2, 5, 7]) is True

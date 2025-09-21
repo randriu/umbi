@@ -77,6 +77,7 @@ class UmbReader(umbi.io.TarReader):
 
     def read_file(self, filename: str, required: bool = False) -> bytes | None:
         """Read raw bytes from a specific file in the tarball. Mark the file as read."""
+        logger.debug(f"attempting to read {filename} ...")
         if filename in self.filenames:
             self.filename_read[filename] = True
         return super().read_file(filename, required)
@@ -85,10 +86,10 @@ class UmbReader(umbi.io.TarReader):
         filename, filetype = file.value
         return self.read_filetype(filename, filetype, required)
 
-    def read_common_csr(self, file: UmbFile, value_type: str, file_csr: UmbFile, required: bool = False):
+    def read_common_csr(self, file: UmbFile, value_type: str, required: bool, file_csr: UmbFile, required_csr: bool = False):
         filename, _ = file.value
         filename_csr, _ = file_csr.value
-        return self.read_filetype_csr(filename, value_type, filename_csr, required)
+        return self.read_filetype_csr(filename, value_type, required, filename_csr, required_csr)
 
     # TODO make annotation into a dedicated class
     def read_annotation(self, label: str, annotation_dict: dict[str, SimpleNamespace] | None):
@@ -104,7 +105,7 @@ class UmbReader(umbi.io.TarReader):
             for applies in annotation.applies_to:
                 path = f"annotations/{label}/{name}/for-{applies}"
                 vector = self.read_filetype_csr(
-                    f"{path}/values.bin", annotation.type, f"{path}/to-value.bin", required=True
+                    f"{path}/values.bin", annotation.type, required=True, filename_csr=f"{path}/to-value.bin"
                 )
                 assert vector is not None
                 annotation.values[applies] = vector
@@ -130,19 +131,18 @@ class UmbReader(umbi.io.TarReader):
         umb.markovian_states = self.read_common(UmbFile.MARKOVIAN_STATES)
         if umb.index.transition_system.exit_rate_type is not None:
             umb.state_exit_rate = self.read_common_csr(
-                UmbFile.EXIT_RATES, umb.index.transition_system.exit_rate_type, UmbFile.STATE_TO_EXIT_RATE
+                UmbFile.EXIT_RATES, umb.index.transition_system.exit_rate_type, False, UmbFile.STATE_TO_EXIT_RATE, False
             )
 
         umb.choice_to_branch = self.read_common(UmbFile.CHOICE_TO_BRANCH)
         umb.choice_to_action = self.read_common(UmbFile.CHOICE_TO_ACTION)
-        umb.action_strings = self.read_common_csr(UmbFile.ACTION_STRINGS, "string", UmbFile.ACTION_TO_ACTION_STRING)
+        umb.action_strings = self.read_common_csr(UmbFile.ACTION_STRINGS, "string", False, UmbFile.ACTION_TO_ACTION_STRING, True)
 
         umb.branch_to_target = self.read_common(UmbFile.BRANCH_TO_TARGET)
         if umb.index.transition_system.branch_probability_type is not None:
             umb.branch_probabilities = self.read_common_csr(
-                UmbFile.BRANCH_PROBABILITIES,
-                umb.index.transition_system.branch_probability_type,
-                UmbFile.BRANCH_TO_PROBABILITY,
+                UmbFile.BRANCH_PROBABILITIES, umb.index.transition_system.branch_probability_type, False,
+                UmbFile.BRANCH_TO_PROBABILITY, False
             )
 
         self.read_annotation("rewards", umb.index.annotations.rewards)
@@ -164,7 +164,7 @@ class UmbWriter(umbi.io.TarWriter):
     def add_common_csr(self, file: UmbFile, data, value_type: str, file_csr: UmbFile, required: bool = False):
         filename, _ = file.value
         filename_csr, _ = file_csr.value
-        self.add_filetype_csr(filename, value_type, data, filename_csr, required=required)
+        self.add_filetype_csr(filename, value_type, data, required, filename_csr)
 
     def add_annotation(self, label: str, annotation_dict: dict[str, SimpleNamespace] | None):
         """
@@ -178,7 +178,7 @@ class UmbWriter(umbi.io.TarWriter):
             for applies, values in annotation.values.items():
                 prefix = f"annotations/{label}/{name}/for-{applies}"
                 self.add_filetype_csr(
-                    f"{prefix}/values.bin", annotation.type, values, f"{prefix}/to-values.bin", required=True
+                    f"{prefix}/values.bin", annotation.type, values, required=True, filename_csr=f"{prefix}/to-values.bin"
                 )
 
     def add_state_valuations(self, state_valuations: dict[str, list[float]] | None):
