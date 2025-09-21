@@ -1,12 +1,18 @@
 import os
 import tomllib
 
-import umbi.io
-
 from .index import UmbIndex
 from .logger import set_log_level, setup_logging
 from .umb import ExplicitUmb, read_umb, write_umb
 
+__all__ = [
+    "set_log_level",
+    "setup_logging",
+    "UmbIndex",
+    "ExplicitUmb",
+    "read_umb",
+    "write_umb",
+]
 
 def get_pyproject_attribute(attribute, default):
     """Read an attribute from pyproject.toml."""

@@ -285,11 +285,10 @@ class UmbIndex:
             setattr(other, field, getattr(self, field))
         return other
 
-    def to_json(self, use_this_tool_file_data: bool = False, remove_none: bool = True) -> umbi.io.JsonLike:
+    def to_json(self, use_this_tool_file_data: bool = False) -> umbi.io.JsonLike:
         """
         Convert to a json object.
         :param use_this_tool_file_data: if True, the file-data field will be set to the values corresponding to this tool
-        :param remove_none: if True, all null values will be removed from the json object
         """
         info = UmbIndexSchema().empty_object()
         for field in [
@@ -304,8 +303,8 @@ class UmbIndex:
         if use_this_tool_file_data:
             info.file_data = FileDataSchema.this_tool_object()
         json_obj = UmbIndexSchema().dump(info)
-        if remove_none:
-            json_obj = umbi.io.json_remove_none(json_obj)
+        assert isinstance(json_obj, umbi.io.JsonLike)
+        json_obj = umbi.io.json_remove_none_dict_values(json_obj)
         return json_obj
 
     def __str__(self) -> str:

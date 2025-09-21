@@ -11,22 +11,22 @@ import typing
 from .bytes import bytes_to_string, string_to_bytes
 
 """A type alias for (high-level) JSON objects."""
-JsonLike = typing.Union[dict, list]
+JsonLike = typing.Union[dict, list, object]
 
 
-def json_remove_none(json_obj: JsonLike) -> JsonLike:
-    """Recursively remove all None (null) values from a JSON (sub-)object."""
+def json_remove_none_dict_values(json_obj: JsonLike) -> JsonLike:
+    """Recursively remove all None (null) dictionary values from a JSON (sub-)object."""
     if isinstance(json_obj, dict):
-        return {k: json_remove_none(v) for k, v in json_obj.items() if v is not None}
+        return {k: json_remove_none_dict_values(v) for k, v in json_obj.items() if v is not None}
     elif isinstance(json_obj, list):
-        return [json_remove_none(v) for v in json_obj]
+        return [json_remove_none_dict_values(v) for v in json_obj]
     return json_obj
 
 
-def json_to_string(json_obj: JsonLike, remove_none: bool = False, indent: int = 4, **kwargs) -> str:
+def json_to_string(json_obj: JsonLike, remove_none: bool = False, indent: int | None = 4, **kwargs) -> str:
     """Encode a JSON object as a string."""
     if remove_none:
-        json_obj = json_remove_none(json_obj)
+        json_obj = json_remove_none_dict_values(json_obj)
     return json.dumps(json_obj, indent=indent, **kwargs)
 
 
