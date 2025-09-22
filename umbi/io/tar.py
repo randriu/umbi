@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 import tarfile
 from typing import Optional
 
-from .bytes import bytes_to_vector, vector_to_bytes
-from .json import JsonLike, bytes_to_json, json_to_bytes
+from ..binary.vectors import bytes_to_vector, vector_to_bytes
+from ..binary.json import JsonLike, bytes_to_json, json_to_bytes
 from ..vectors.csr import *
 
 

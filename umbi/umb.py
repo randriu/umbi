@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import umbi
 import umbi.io
+import umbi.binary
 
 
 class UmbFile(Enum):
@@ -31,6 +32,9 @@ class UmbFile(Enum):
     BRANCH_TO_TARGET = ("branch-to-target.bin", "vector[uint64]")
     BRANCH_TO_PROBABILITY = ("branch-to-probability.bin", "csr")
     BRANCH_PROBABILITIES = ("branch-probabilities.bin", "bytes")
+
+    STATE_TO_VALUATION = ("state-to-valuation.bin", "csr")
+    STATE_VALUATIONS = ("state-valuations.bin", "bytes")
 
 
 class ExplicitUmb:
@@ -110,10 +114,24 @@ class UmbReader(umbi.io.TarReader):
                 assert vector is not None
                 annotation.values[applies] = vector
 
-    def read_state_valuations(self, state_valuations: dict[str, object] | None):
-        # TODO implement
+    def read_state_valuations(self, state_valuations: SimpleNamespace | None, num_states: int):
         if state_valuations is None:
             return
+        ranges = self.read_common(UmbFile.STATE_TO_VALUATION, required=False)
+        if ranges is None:
+            ranges = [(s,s+1) for s in range(num_states)]
+        assert isinstance(ranges, (list, type(tuple([int,int]))))
+        a = state_valuations.alignment
+        ranges = [(x*a,y*a) for (x,y) in ranges]
+        valuations = self.read_common(UmbFile.STATE_VALUATIONS, required=True)
+        assert isinstance(valuations, bytes)
+        state_valuation = umbi.binary.bytes_into_chunk_ranges(valuations, ranges)
+
+        state_valuations.variables
+
+        
+
+        variables = state_valuations.variables
         logger.warning("state valuations import is not implemented yet")
         return
 

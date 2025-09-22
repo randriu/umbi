@@ -1,17 +1,18 @@
 """
-Utilities for encoding, decoding, and cleaning JSON objects.
+Utilities for (de)serializing JSONs.
 """
 
-import json
+import json as std_json
 import logging
 
 logger = logging.getLogger(__name__)
 import typing
 
-from .bytes import bytes_to_string, string_to_bytes
+
+from .strings import *
 
 """A type alias for (high-level) JSON objects."""
-JsonLike = typing.Union[dict, list, object]
+JsonLike = typing.Union[dict, list]
 
 
 def json_remove_none_dict_values(json_obj: JsonLike) -> JsonLike:
@@ -24,19 +25,21 @@ def json_remove_none_dict_values(json_obj: JsonLike) -> JsonLike:
 
 
 def json_to_string(json_obj: JsonLike, remove_none: bool = False, indent: int | None = 4, **kwargs) -> str:
-    """Encode a JSON object as a string."""
+    """
+    Encode a JSON object as a string.
+    :raises: JSONEncodeError if the object is not serializable
+    """
     if remove_none:
         json_obj = json_remove_none_dict_values(json_obj)
-    return json.dumps(json_obj, indent=indent, **kwargs)
+    return std_json.dumps(json_obj, indent=indent, **kwargs)
 
 
 def string_to_json(json_str: str) -> JsonLike:
-    """Convert a string to a JSON object."""
-    try:
-        return json.loads(json_str)
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error: {e}")
-        raise
+    """
+    Convert a string to a JSON object.
+    :raises: JSONDecodeError if the string is not valid JSON
+    """
+    return std_json.loads(json_str)
 
 
 def bytes_to_json(data: bytes) -> JsonLike:
@@ -47,3 +50,4 @@ def bytes_to_json(data: bytes) -> JsonLike:
 def json_to_bytes(json_obj: JsonLike) -> bytes:
     """Convert a JSON object to bytes."""
     return string_to_bytes(json_to_string(json_obj))
+

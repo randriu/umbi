@@ -1,5 +1,5 @@
 import pytest
-from umbi.io.bytes import *
+from umbi.binary import *
 import fractions
 
 

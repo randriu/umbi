@@ -162,7 +162,7 @@ class PaddingSchema(JsonSchema):
 
     @validates("padding")
     def validate_padding(self, value):
-        if value <= 0:
+        if value == 0:
             raise ValidationError("padding must be a positive integer")
 
 
@@ -178,21 +178,20 @@ class VariableSchema(JsonSchema):
 
 
 class StateValuationsSchema(JsonSchema):
-    alignment = FieldUint(required=True)
-    variables = fields.List(fields.Raw(), required=True)
+    alignment = FieldUint(data_key="alignment", required=True)
+    variables = fields.List(fields.Raw(), data_key="variables", required=True)
 
     @validates("variables")
-    def validate_variables(self, value):
-        if not isinstance(value, list):  # is this necessary?
-            raise ValidationError("variables must be a list")
-        for v in value:
+    def validate_variables(self, variables):
+        assert isinstance(variables, list)
+        for v in variables:
             if not isinstance(v, dict):
                 raise ValidationError("each variable must be a dict")
             if "padding" in v:
                 try:
                     PaddingSchema().load(v)
                 except ValidationError as err:
-                    raise ValidationError(f"invalid padding variable: {err.messages}")
+                    raise ValidationError(f"invalid padding: {err.messages}")
             elif "name" in v and "type" in v:
                 try:
                     VariableSchema().load(v)
@@ -217,7 +216,7 @@ class AnnotationsSchema(JsonSchema):
         obj = super().empty_object()
         obj.rewards = dict[str, SimpleNamespace]()
         obj.aps = dict[str, SimpleNamespace]()
-        obj.state_valuations = dict[str, SimpleNamespace]()
+        obj.state_valuations = StateValuationsSchema.empty_object()
         return obj
 
 

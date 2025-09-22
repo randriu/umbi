@@ -1,6 +1,6 @@
 import pytest
 import json
-from umbi.io.json import *
+from umbi.binary.json import *
 
 
 def test_json_remove_none_dict():
