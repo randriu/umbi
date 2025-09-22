@@ -5,6 +5,10 @@ from .index import UmbIndex
 from .logger import set_log_level, setup_logging
 from .umb import ExplicitUmb, read_umb, write_umb
 
+import umbi.binary
+import umbi.vectors
+import umbi.io
+
 __all__ = [
     "set_log_level",
     "setup_logging",
