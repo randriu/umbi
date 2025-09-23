@@ -1,10 +1,9 @@
 import os
 import tomllib
 
+from . import binary, io, vectors
 from .logger import set_log_level, setup_logging
-from . import binary
-from . import vectors  
-from . import io
+
 
 def get_pyproject_attribute(attribute, default, section="project"):
     """Read an attribute from pyproject.toml."""

@@ -1,6 +1,8 @@
+from bitstring import BitArray
+
 import umbi
 import umbi.binary as binary
-from bitstring import BitArray
+
 
 def main():
 
@@ -8,7 +10,6 @@ def main():
         for byte in bytestring:
             print(f"{byte:08b}", end=" ")
         print()
-
 
     # bits = BitArray(int=-16897, length=16) + BitArray(uint=56, length=8)
     # for i in range(0, len(bits.bin), 8):
@@ -25,7 +26,6 @@ def main():
         "v1": -16897,
     }
 
-
     fields = [
         binary.Field("v0", "bool", 2),
         binary.Field("v1", "uint", 7),
@@ -41,13 +41,12 @@ def main():
         "v3": True,
     }
 
-    bytestring,fields = binary.composite_pack(fields,values)
+    bytestring, fields = binary.composite_pack(fields, values)
     print_bytes(bytestring)
     print(fields)
 
     values_out = binary.composite_unpack(bytestring, fields)
     print(values_out)
-
 
 
 if __name__ == "__main__":

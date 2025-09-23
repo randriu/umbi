@@ -49,4 +49,3 @@ def bytes_to_json(data: bytes) -> JsonLike:
 def json_to_bytes(json_obj: JsonLike) -> bytes:
     """Convert a JSON object to bytes."""
     return umbi.binary.string_to_bytes(json_to_string(json_obj))
-

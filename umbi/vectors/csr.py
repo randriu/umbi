@@ -9,7 +9,7 @@ Auxiliary vector operations.
 #     """A simple range datatype representing [start, end)."""
 #     start: int
 #     end: int
-    
+
 #     def __post_init__(self):
 #         self.validate()
 
@@ -20,11 +20,11 @@ Auxiliary vector operations.
 #     def length(self) -> int:
 #         """Return the length of the range."""
 #         return self.end - self.start
-    
+
 #     def to_tuple(self) -> tuple[int, int]:
 #         """Convert to tuple for compatibility with existing code."""
 #         return (self.start, self.end)
-    
+
 #     @staticmethod
 #     def from_tuple(t: tuple[int, int]) -> 'Range':
 #         """Create a Range from a tuple."""
@@ -33,14 +33,14 @@ Auxiliary vector operations.
 #         return Range(t[0], t[1])
 
 
-
-    
 def is_vector_ranges(ranges: list[tuple[int, int]]) -> bool:
     """Check if a vector is a list of ranges."""
     if len(ranges) == 0:
         return False
+
     def is_interval(x: tuple[int, int]) -> bool:
         return isinstance(x, tuple) and len(x) == 2 and all(isinstance(y, int) for y in x) and x[0] <= x[1]
+
     if not all(is_interval(interval) for interval in ranges):
         return False
     for i in range(len(ranges) - 1):
@@ -60,8 +60,6 @@ def is_vector_csr(vector: list[int]) -> bool:
     if not all(vector[i] <= vector[i + 1] for i in range(len(vector) - 1)):
         return False
     return True
-
-
 
 
 def csr_to_ranges(csr: list[int]) -> list[tuple[int, int]]:

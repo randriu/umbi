@@ -2,21 +2,23 @@
 Utilities for packing and unpacking composite datatypes (structs).
 """
 
-from fractions import Fraction
 from dataclasses import dataclass
-from bitstring import BitArray
-
+from fractions import Fraction
 from types import SimpleNamespace
 
+from bitstring import BitArray
+
 from .api import *
+
 
 @dataclass(frozen=False)
 class Padding:
     """A simple range datatype representing [start, end)."""
+
     padding: int
 
     @classmethod
-    def from_namespace(cls, data: SimpleNamespace) -> 'Padding':
+    def from_namespace(cls, data: SimpleNamespace) -> "Padding":
         return cls(padding=data.padding)
 
     def validate(self):
@@ -27,15 +29,18 @@ class Padding:
 @dataclass(frozen=False)
 class Field:
     """A field in a composite datatype."""
+
     name: str
     type: str
-    size: Optional[int] = None  # number of bits for values of fixed-size types; None for variable-size types (string, rational)
-    lower: Optional[float] = None # lower bound (for numeric types)
-    upper: Optional[float] = None # upper bound (for numeric types)
-    offset: Optional[float] = None # lower value offset (for numeric types)
+    size: Optional[int] = (
+        None  # number of bits for values of fixed-size types; None for variable-size types (string, rational)
+    )
+    lower: Optional[float] = None  # lower bound (for numeric types)
+    upper: Optional[float] = None  # upper bound (for numeric types)
+    offset: Optional[float] = None  # lower value offset (for numeric types)
 
     @classmethod
-    def from_namespace(cls, data: SimpleNamespace) -> 'Field':
+    def from_namespace(cls, data: SimpleNamespace) -> "Field":
         return cls(
             name=data.name,
             type=data.type,
@@ -57,6 +62,7 @@ class Field:
             elif self.type == "double" and self.size != 64:
                 raise ValueError("Field size for double must be 64")
 
+
 class CompositeType:
     """A composite datatype consisting of fields and paddings."""
 
@@ -64,7 +70,7 @@ class CompositeType:
         self._fields = fields
 
     @classmethod
-    def from_namespace(cls, data: list[SimpleNamespace]) -> 'CompositeType':
+    def from_namespace(cls, data: list[SimpleNamespace]) -> "CompositeType":
         fields = []
         for item in data:
             if hasattr(item, "padding"):
@@ -127,9 +133,8 @@ class CompositeType:
         self._fields = new_fields
 
 
-
 class CompositePacker:
-    """ Utility class for packing composite datatypes into a bytestring. """
+    """Utility class for packing composite datatypes into a bytestring."""
 
     def __init__(self):
         self.buffer = BitArray()  # bit buffer, MSB at [0]
@@ -141,22 +146,22 @@ class CompositePacker:
 
     def flush_buffer(self):
         """Flush full bytes from the buffer to the bytestring."""
-        while len(self.buffer) >= 8: # append one byte at a time so that the bytestring is little-endian
-            self.buffer, bits = self.buffer[:-8], self.buffer[-8:] # get new bits from the end (LSB side)
+        while len(self.buffer) >= 8:  # append one byte at a time so that the bytestring is little-endian
+            self.buffer, bits = self.buffer[:-8], self.buffer[-8:]  # get new bits from the end (LSB side)
             new_bytes = bits.tobytes()
             self.bytestring += new_bytes
 
     def append_to_buffer(self, bits: BitArray):
         """Append bits to the buffer flush full bytes to the bytestring."""
-        self.buffer = bits + self.buffer # prepend to the start (MSB side)
+        self.buffer = bits + self.buffer  # prepend to the start (MSB side)
         self.flush_buffer()
-    
+
     def add_padding(self, num_bits: int):
         """Add padding bits to the buffer."""
         assert num_bits > 0
         self.append_to_buffer(BitArray(uint=0, length=num_bits))
         self.assert_buffer_empty()
-    
+
     def pack_field(self, field: Field, value: object):
         """Pack a single field into the buffer or the bytestring."""
         if field.type in ["string", "rational"]:
@@ -192,7 +197,7 @@ class CompositePacker:
 
 
 class CompositeUnpacker:
-    """ Utility class for unpacking composite datatypes from a bytestring. """
+    """Utility class for unpacking composite datatypes from a bytestring."""
 
     def __init__(self, bytestring: bytes):
         self.bytestring = bytestring  # input bytestring, little-endian order
@@ -208,18 +213,18 @@ class CompositeUnpacker:
             return
         num_bytes_needed = (num_bits - len(self.buffer) + 7) // 8
         assert len(self.bytestring) >= num_bytes_needed, "not enough data to fill the buffer"
-        for _ in range(num_bytes_needed): # read one byte at a time since the bytestring is little-endian
-            next_bytes,self.bytestring = split_bytes(self.bytestring,1)
-            self.buffer = BitArray(bytes=next_bytes) + self.buffer # prepend to the buffer to keep MSB at [0]
+        for _ in range(num_bytes_needed):  # read one byte at a time since the bytestring is little-endian
+            next_bytes, self.bytestring = split_bytes(self.bytestring, 1)
+            self.buffer = BitArray(bytes=next_bytes) + self.buffer  # prepend to the buffer to keep MSB at [0]
 
     def extract_from_buffer(self, num_bits: int):
         """Extract the given number of bits from the buffer."""
         assert num_bits >= 0
         self.align_buffer(num_bits)
-        bits = self.buffer[-num_bits:] # remove from the end (LSB side)
+        bits = self.buffer[-num_bits:]  # remove from the end (LSB side)
         self.buffer = self.buffer[:-num_bits]
         return bits
-    
+
     def skip_padding(self, num_bits: int):
         self.extract_from_buffer(num_bits)
         self.assert_buffer_empty()

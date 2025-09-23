@@ -1,9 +1,10 @@
 from fractions import Fraction
-
 from typing import Optional
+
 from bitstring import BitArray
 
 from .primitives import *
+
 
 def normalize_rational(value: Fraction) -> Fraction:
     """Ensure that the denominator of a fraction is non-negative."""
@@ -51,7 +52,7 @@ def bytes_to_rational(data: bytes, little_endian: bool = True) -> Fraction:
 
 def rational_pack(value: Fraction) -> bytes:
     """Pack a fraction into a length-prefixed bytestring."""
-    prefix_size = 2 # size of uint16
+    prefix_size = 2  # size of uint16
     value = normalize_rational(value)
     term_size = rational_size(value) // 2
     prefix_bytes = uint_to_bytes(term_size, prefix_size)
@@ -59,13 +60,14 @@ def rational_pack(value: Fraction) -> bytes:
     denominator_bytes = uint_to_bytes(value.denominator, term_size)
     return prefix_bytes + numerator_bytes + denominator_bytes
 
-def rational_unpack(bytestring: bytes) -> tuple[Fraction,bytes]:
+
+def rational_unpack(bytestring: bytes) -> tuple[Fraction, bytes]:
     """
     Unpack a length-prefixed bytestring into a fraction.
     :return: the unpacked fraction
     :return: the remainder of the bytestring after extracting the fraction
     """
-    prefix_size = 2 # size of uint16
+    prefix_size = 2  # size of uint16
     prefix, bytestring = split_bytes(bytestring, prefix_size)
     term_size = bytes_to_uint(prefix)
     numerator, bytestring = split_bytes(bytestring, term_size)

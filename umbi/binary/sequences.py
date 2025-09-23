@@ -9,8 +9,9 @@ logger = logging.getLogger(__name__)
 
 from .api import *
 from .booleans import *
-from .primitives import *
 from .composites import *
+from .primitives import *
+
 
 def bytes_into_chunk_ranges(data: bytes, chunk_ranges: list[tuple[int, int]]) -> list[bytes]:
     """Split bytestring into chunks according to chunk ranges."""
@@ -27,7 +28,10 @@ def bytes_into_num_chunks(data: bytes, num_chunks: int) -> list[bytes]:
 
 
 def bytes_to_vector(
-    data: bytes, value_type: str | CompositeType, chunk_ranges: Optional[list[tuple[int, int]]] = None, little_endian: bool = True
+    data: bytes,
+    value_type: str | CompositeType,
+    chunk_ranges: Optional[list[tuple[int, int]]] = None,
+    little_endian: bool = True,
 ) -> list:
     """
     Decode a binary string as a list of numbers.
@@ -43,7 +47,7 @@ def bytes_to_vector(
 
     if value_type == "bool":
         assert little_endian, "big-endianness for bitvectors is not implemented"
-        return bytes_to_bitvector(data)    
+        return bytes_to_bitvector(data)
 
     if len(data) == 0:
         return []
@@ -62,7 +66,7 @@ def vector_to_bytes(
     vector: list, value_type: str | CompositeType, little_endian: bool = True
 ) -> tuple[bytes, Optional[list[tuple[int, int]]]]:
     """Encode a list of values as a binary string.
-    :param value_type: vector element type, either bool, string or {int32|uint32|int64|uint64|double|rational}[-interval]
+    :param value_type: vector element type, either composite, bool, string or {int32|uint32|int64|uint64|double|rational}[-interval]
     :return: encoded binary string
     :return: (optional) chunk ranges if non-trivial splitting is needed to split the resulting bytestring into chunks, e.g. for strings or non-standard rationals
     """
