@@ -7,10 +7,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 import tarfile
-from typing import Optional
 
 import umbi.binary
 import umbi.vectors
+
 from .jsons import JsonLike, bytes_to_json, json_to_bytes
 
 
@@ -58,6 +58,7 @@ class TarReader:
 
     def read_file(self, filename: str, required: bool = False) -> bytes | None:
         """Read raw bytes from a specific file in the tarball"""
+        logger.debug(f"loading {filename} ...")
         if filename not in self.filenames:
             if not required:
                 return None
@@ -110,17 +111,20 @@ class TarWriter:  #
     """An auxiliary class to simplify tar writing."""
 
     @classmethod
-    def tar_write(cls, tarpath: str, filename_data: dict[str, bytes], gzip: bool = True):
+    def tar_write(cls, tarpath: str, filename_data: dict[str, bytes], compression: str = "gz"):
         """
         Create a tarball file with the given contents.
 
         :param tarpath: path to a tarball file
         :param filename_data: a dictionary filename -> binary string
-        :param gzip: if True, the tarball file will be gzipped
+        :param compression: compression algorithm one of ("gz", "bz2", "xz" or "" for no compression)
         """
-        logger.debug(f"writing tarfile {tarpath} ...")
-        mode = "w" if not gzip else "w:gz"
-        with tarfile.open(tarpath, mode=mode) as tar:
+        logger.debug(f"writing tarfile {tarpath} with compression '{compression}' ...")
+        assert compression in ("", "gz", "bz2", "xz"), "unsupported compression algorithm"
+        mode = "w"
+        if compression != "":
+            mode = f"w:{compression}"
+        with tarfile.open(tarpath, mode=mode) as tar:  # type: ignore
             for filename, data in filename_data.items():
                 tar_info = tarfile.TarInfo(name=filename)
                 tar_info.size = len(data)
@@ -132,12 +136,12 @@ class TarWriter:  #
 
     def add_file(self, filename: str, data: bytes):
         """Add a (binary) file to the tarball."""
+        logger.debug(f"writing {filename} ...")
         if filename in self.filename_data:
             logger.warning(f"file {filename} already exists in the tarball")
         self.filename_data[filename] = data
 
     def add_filetype(self, filename: str, filetype: str, data, required: bool = False):
-        logger.debug(f"attempting to write {filename} ...")
         if data is None:
             if required:
                 raise ValueError(f"missing required data for {filename}")
@@ -169,7 +173,9 @@ class TarWriter:  #
         self.add_file(filename, data_out)
         if chunk_ranges is not None:
             self.add_filetype(filename_csr, "csr", chunk_ranges, required=True)
+        else:
+            logger.debug(f"skipping CSR file {filename_csr}")
 
-    def write(self, tarpath: str, gzip: bool = True):
+    def write(self, tarpath: str):
         """Write all added files to a tarball."""
-        TarWriter.tar_write(tarpath, self.filename_data, gzip=gzip)
+        TarWriter.tar_write(tarpath, self.filename_data)

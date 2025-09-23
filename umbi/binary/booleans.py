@@ -2,9 +2,12 @@
 Utilities for (de)serializing booleans and bitvectors.
 """
 
-from bitstring import BitArray
 from typing import Optional
+
+from bitstring import BitArray
+
 from .primitives import *
+
 
 def bytes_to_bitvector(bytestring: bytes) -> list[bool]:
     """Convert a bytestring representing a bitvector into a list of booleans."""

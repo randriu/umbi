@@ -1,10 +1,12 @@
 """Utilities for de()serializing intervals."""
 
-from .rationals import *
-from .primitives import *
-
 import fractions
+
 from bitstring import BitArray
+
+from .primitives import *
+from .rationals import *
+
 
 def interval_to_bytes(value: tuple[object, object], value_type: str, little_endian: bool = True) -> bytes:
     """Convert a tuple of two integers into a bytestring representing an interval."""
@@ -22,6 +24,7 @@ def interval_to_bytes(value: tuple[object, object], value_type: str, little_endi
         upper = primitive_to_bytes(value[1], base_value_type, little_endian)
     return lower + upper
 
+
 def bytes_to_interval(data: bytes, value_type: str, little_endian: bool = True) -> tuple[object, object]:
     """Convert a bytestring representing an interval into a tuple of two base values."""
     assert len(data) % 2 == 0, "interval data must have even length"
@@ -35,4 +38,3 @@ def bytes_to_interval(data: bytes, value_type: str, little_endian: bool = True) 
         lower = bytes_to_primitive(data[:mid], base_value_type, little_endian)
         upper = bytes_to_primitive(data[mid:], base_value_type, little_endian)
     return (lower, upper)
-

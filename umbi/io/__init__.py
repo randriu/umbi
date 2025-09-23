@@ -2,9 +2,9 @@
 umbi.io: Utilities for binary and JSON serialization, and tar archive handling.
 """
 
-from .tar import TarReader, TarWriter
-from .jsons import *
 from .index import UmbIndex
+from .jsons import *
+from .tar import TarReader, TarWriter
 from .umb import ExplicitUmb, read_umb, write_umb
 
 __all__ = [

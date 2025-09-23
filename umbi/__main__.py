@@ -26,11 +26,11 @@ def main(log_level, import_umb, export_umb):
 
     ats = None
     if import_umb is not None:
-        ats = umbi.read_umb(import_umb)
+        ats = umbi.io.read_umb(import_umb)
     if export_umb is not None:
         if ats is None:
             raise ValueError("--export-umb specified, but nothing to export")
-        umbi.write_umb(ats, export_umb)
+        umbi.io.write_umb(ats, export_umb)
 
 
 if __name__ == "__main__":

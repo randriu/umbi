@@ -21,7 +21,9 @@ from marshmallow import (
 from marshmallow_oneofschema import OneOfSchema
 
 import umbi
+
 from .jsons import *
+
 
 class FieldUint(fields.Int):
     """Custom marshmallow field for unsigned integers."""
@@ -161,8 +163,6 @@ class PaddingSchema(JsonSchema):
     padding = FieldUint(data_key="padding", required=True)
 
 
-
-
 class VariableSchema(JsonSchema):
     name = fields.String(data_key="name", required=True)
     type = fields.String(
@@ -173,37 +173,38 @@ class VariableSchema(JsonSchema):
     upper = fields.Float(data_key="upper", required=False)
     offset = fields.Float(data_key="offset", required=False)
 
-    
+
 class ValuationFieldSchema(OneOfSchema):
     type_schemas = {
-        'padding': PaddingSchema,
-        'variable': VariableSchema,
+        "padding": PaddingSchema,
+        "variable": VariableSchema,
     }
 
     # custom discriminator field since the default 'type' field is used in VariableSchema
-    type_field = '_discriminator'
+    type_field = "_discriminator"
 
     def get_obj_type(self, obj):
         """Determine which schema to use based on the object's attributes."""
-        if hasattr(obj, 'padding'):
+        if hasattr(obj, "padding"):
             return "padding"
-        elif hasattr(obj, 'name') and hasattr(obj, 'type'):
+        elif hasattr(obj, "name") and hasattr(obj, "type"):
             return "variable"
         else:
             raise ValueError("Object must be either a padding or variable namespace")
-    
+
     def load(self, json_data, *args, **kwargs):
         """Add discriminator field before loading."""
         assert isinstance(json_data, dict)
         json_data = dict(json_data, _discriminator="padding" if "padding" in json_data else "variable")
         return super().load(json_data, *args, **kwargs)
-    
+
     def dump(self, obj, *args, **kwargs):
         """Remove discriminator field after dumping."""
         result = super().dump(obj, *args, **kwargs)
         assert isinstance(result, dict)
         result.pop("_discriminator", None)
         return result
+
 
 class StateValuationsSchema(JsonSchema):
     alignment = FieldUint(data_key="alignment", required=True)
