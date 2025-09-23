@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger(__name__)
 import typing
 
-import umbi.binary
+import umbi
 
 """A type alias for (high-level) JSON objects."""
 JsonLike = typing.Union[dict, list]
