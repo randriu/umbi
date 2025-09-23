@@ -12,6 +12,7 @@ license = {file = "LICENSE"}
 dependencies = [
   "click",
   "marshmallow",
+  "marshmallow_oneofschema",
   "bitstring",
 ]
 requires-python = ">=3.11"

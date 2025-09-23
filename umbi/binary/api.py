@@ -3,10 +3,9 @@ A convenient interface for all (de)serializers in this package.
 """
 
 from .strings import *
-from .json import *
 from .primitives import *
 from .booleans import *
-from .fractions import *
+from .rationals import *
 from .intervals import *
 
 
@@ -22,21 +21,18 @@ def standard_value_type_size(value_type: str) -> int:
 
 
 def value_to_bytes(
-    value: str | JsonLike | int | float | Fraction | tuple, value_type: str, little_endian: bool = True
+    value: str | int | float | Fraction | tuple, value_type: str, little_endian: bool = True
 ) -> bytes:
     """
     Convert a value of a given type to a bytestring.
     :param value_type: either string or one of {int32|uint32|int64|uint64|double|rational}[-interval]
     """
     if value_type == "string":
-        assert isinstance(value, str), "string value must be a str"
-        return string_to_bytes(value) # no endinanness for strings
-    elif value_type == "json":
-        assert isinstance(value, JsonLike), "json value must be a dict or list"
-        return json_to_bytes(value) # no endianness for strings
+        assert isinstance(value, str)
+        return string_to_bytes(value) # no endianness for strings
     elif value_type == "rational":
-        assert isinstance(value, Fraction), "rational value must be a Fraction"
-        return fraction_to_bytes(value, little_endian=little_endian)
+        assert isinstance(value, Fraction)
+        return rational_to_bytes(value, little_endian=little_endian)
     elif "-interval" in value_type:
         assert isinstance(value, tuple) and len(value) == 2, "interval value must be a pair"
         return interval_to_bytes(value, value_type, little_endian)
@@ -47,7 +43,7 @@ def value_to_bytes(
 
 def bytes_to_value(
     data: bytes, value_type: str, little_endian: bool = True
-) -> str | JsonLike | int | float | Fraction | tuple:
+) -> str | int | float | Fraction | tuple:
     """
     Convert a binary string to a single value of the given type.
     :param value_type: string or one of {int32|uint32|int64|uint64|double|rational}[-interval]
@@ -55,48 +51,46 @@ def bytes_to_value(
     """
     if value_type == "string":
         return bytes_to_string(data) # no endianness for strings
-    elif value_type == "json":
-        return bytes_to_json(data) # no endianness for strings
     elif value_type == "rational":
-        return bytes_to_fraction(data, little_endian)
+        return bytes_to_rational(data, little_endian)
     elif "-interval" in value_type:
         return bytes_to_interval(data, value_type, little_endian)
     else:
         return bytes_to_primitive(data, value_type, little_endian)
 
 
-def value_to_bits(
-    value: str | bool | int | float | Fraction, value_type: str, num_bits: Optional[int] = None
-) -> BitArray:
-    """
-    Convert a value of a given type to a fixed-length bit representation.
-    :param value_type: one of {string,int,uint,double,rational}
-    """
-    if value_type == "string":
-        assert isinstance(value, str), "string value must be a str"
-        return string_to_bits(value)
-    elif value_type == "bool":
-        assert isinstance(value, bool), "boolean value must be a bool"
-        return bool_to_bits(value,num_bits)
-    elif value_type == "rational":
-        assert isinstance(value, Fraction), "rational value must be a Fraction"
-        return fraction_to_bits(value)
-    else:
-        assert isinstance(value, (int, float)), "primitive value must be an int or float"
-        assert num_bits is not None, "num_bits must be specified for primitive types"
-        return primitive_to_bits(value, value_type, num_bits)
+# def value_to_bits(
+#     value: str | bool | int | float | Fraction, value_type: str, num_bits: Optional[int] = None
+# ) -> BitArray:
+#     """
+#     Convert a value of a given type to a fixed-length bit representation.
+#     :param value_type: one of {string,int,uint,double,rational}
+#     """
+#     if value_type == "string":
+#         assert isinstance(value, str), "string value must be a str"
+#         return string_to_bits(value)
+#     elif value_type == "bool":
+#         assert isinstance(value, bool), "boolean value must be a bool"
+#         return bool_to_bits(value,num_bits)
+#     elif value_type == "rational":
+#         assert isinstance(value, Fraction), "rational value must be a Fraction"
+#         return fraction_to_bits(value)
+#     else:
+#         assert isinstance(value, (int, float)), "primitive value must be an int or float"
+#         assert num_bits is not None, "num_bits must be specified for primitive types"
+#         return primitive_to_bits(value, value_type, num_bits)
 
 
-def bits_to_value(bits: BitArray, value_type: str) -> str | bool | int | float | Fraction:
-    """
-    Convert a fixed-length bit representation to a single value of the given type.
-    :param value_type: one of {string,int,uint,double,rational}
-    """
-    if value_type == "string":
-        return bits_to_string(bits)
-    elif value_type == "bool":
-        return bits_to_bool(bits)
-    elif value_type == "rational":
-        return bits_to_fraction(bits)
-    else:
-        return bits_to_primitive(bits, value_type)
+# def bits_to_value(bits: BitArray, value_type: str) -> str | bool | int | float | Fraction:
+#     """
+#     Convert a fixed-length bit representation to a single value of the given type.
+#     :param value_type: one of {string,int,uint,double,rational}
+#     """
+#     if value_type == "string":
+#         return bits_to_string(bits)
+#     elif value_type == "bool":
+#         return bits_to_bool(bits)
+#     elif value_type == "rational":
+#         return bits_to_fraction(bits)
+#     else:
+#         return bits_to_primitive(bits, value_type)

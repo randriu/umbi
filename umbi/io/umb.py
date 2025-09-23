@@ -1,3 +1,7 @@
+"""
+Utilities for reading and writing umbfiles.
+"""
+
 import logging
 from typing import Optional
 
@@ -7,8 +11,10 @@ from enum import Enum
 from types import SimpleNamespace
 
 import umbi
-import umbi.io
 import umbi.binary
+
+from .index import UmbIndex
+from .tar import TarReader, TarWriter
 
 
 class UmbFile(Enum):
@@ -41,7 +47,7 @@ class ExplicitUmb:
     """Class for an explicit representation of a umbfile. The goal of this class is to have all the data is stored in numpy arrays and lists."""
 
     def __init__(self):
-        self.index: umbi.UmbIndex = umbi.UmbIndex()
+        self.index: UmbIndex = UmbIndex()
 
         self.initial_states = None
         self.state_to_choice = None
@@ -67,7 +73,8 @@ class ExplicitUmb:
         return
 
 
-class UmbReader(umbi.io.TarReader):
+
+class UmbReader(TarReader):
     def __init__(self, tarpath: str):
         super().__init__(tarpath)
         # to keep track of which files were read
@@ -116,7 +123,7 @@ class UmbReader(umbi.io.TarReader):
 
     def read_state_valuations(self, state_valuations: SimpleNamespace | None, num_states: int):
         if state_valuations is None:
-            return
+            return None
         ranges = self.read_common(UmbFile.STATE_TO_VALUATION, required=False)
         if ranges is None:
             ranges = [(s,s+1) for s in range(num_states)]
@@ -125,22 +132,15 @@ class UmbReader(umbi.io.TarReader):
         ranges = [(x*a,y*a) for (x,y) in ranges]
         valuations = self.read_common(UmbFile.STATE_VALUATIONS, required=True)
         assert isinstance(valuations, bytes)
-        state_valuation = umbi.binary.bytes_into_chunk_ranges(valuations, ranges)
-
-        state_valuations.variables
-
-        
-
-        variables = state_valuations.variables
-        logger.warning("state valuations import is not implemented yet")
-        return
+        value_type = umbi.binary.CompositeType.from_namespace(state_valuations.variables)
+        return umbi.binary.bytes_to_vector(valuations, value_type, ranges)
 
     def read_umb(self):  # type: ignore
         logger.info(f"loading umbfile from {self.tarpath} ...")
         umb = ExplicitUmb()
 
         json_obj = self.read_common(UmbFile.INDEX_JSON, required=True)
-        umb.index = umbi.UmbIndex.from_json(json_obj)
+        umb.index = UmbIndex.from_json(json_obj)
 
         umb.initial_states = self.read_common(UmbFile.INITIAL_STATES, required=True)
         umb.state_to_choice = self.read_common(UmbFile.STATE_TO_CHOICE)
@@ -163,9 +163,9 @@ class UmbReader(umbi.io.TarReader):
                 UmbFile.BRANCH_TO_PROBABILITY, False
             )
 
-        self.read_annotation("rewards", umb.index.annotations.rewards)
-        self.read_annotation("aps", umb.index.annotations.aps)
-        self.read_state_valuations(umb.index.annotations.state_valuations)
+        self.read_annotation("rewards", umb.index.annotations.rewards) # TODO store to umb.rewards
+        self.read_annotation("aps", umb.index.annotations.aps) # TODO store to umb.aps
+        umb.state_valuations = self.read_state_valuations(umb.index.annotations.state_valuations, umb.index.transition_system.num_states)
 
         self.warn_about_unread_files()
         umb.validate()
@@ -173,7 +173,7 @@ class UmbReader(umbi.io.TarReader):
         return umb
 
 
-class UmbWriter(umbi.io.TarWriter):
+class UmbWriter(TarWriter):
 
     def add_common(self, file: UmbFile, data, required: bool = False):
         filename, filetype = file.value
@@ -199,11 +199,16 @@ class UmbWriter(umbi.io.TarWriter):
                     f"{prefix}/values.bin", annotation.type, values, required=True, filename_csr=f"{prefix}/to-values.bin"
                 )
 
-    def add_state_valuations(self, state_valuations: dict[str, list[float]] | None):
-        if state_valuations is None:
+    def add_state_valuations(self, state_valuations_index: SimpleNamespace | None, state_valuations: list[dict] | None):
+        if state_valuations_index is None:
             return
-        logger.warning("state valuations export is not implemented yet")
-        return
+        assert state_valuations is not None
+        value_type = umbi.binary.CompositeType.from_namespace(state_valuations_index.variables)
+        bytestring,ranges = umbi.binary.vector_to_bytes(state_valuations, value_type)
+        self.add_common(UmbFile.STATE_VALUATIONS, bytestring)
+        assert ranges is not None
+        state_valuations_index.alignment = 1 # TODO compute nontrivial alignment
+        self.add_common(UmbFile.STATE_TO_VALUATION, ranges)
 
     def write_umb(self, umb: ExplicitUmb, umbpath: str):
         umb.validate()
@@ -231,7 +236,7 @@ class UmbWriter(umbi.io.TarWriter):
         )
         self.add_annotation("rewards", umb.index.annotations.rewards)
         self.add_annotation("aps", umb.index.annotations.aps)
-        self.add_state_valuations(umb.index.annotations.state_valuations)
+        self.add_state_valuations(umb.index.annotations.state_valuations, umb.state_valuations)
         self.write(umbpath)
         logger.info(f"finished writing the umbfile")
 

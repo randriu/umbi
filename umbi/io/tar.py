@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 import tarfile
 from typing import Optional
 
-from ..binary.vectors import bytes_to_vector, vector_to_bytes
-from ..binary.json import JsonLike, bytes_to_json, json_to_bytes
+from ..binary.sequences import bytes_to_vector, vector_to_bytes
+from .jsons import JsonLike, bytes_to_json, json_to_bytes
 from ..vectors.csr import *
 
 
@@ -137,6 +137,7 @@ class TarWriter:  #
         self.filename_data[filename] = data
 
     def add_filetype(self, filename: str, filetype: str, data, required: bool = False):
+        logger.debug(f"attempting to write {filename} ...")
         if data is None:
             if required:
                 raise ValueError(f"missing required data for {filename}")
