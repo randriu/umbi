@@ -2,15 +2,22 @@
 umbi.io: Utilities for binary and JSON serialization, and tar archive handling.
 """
 
-from .bytes import bytes_to_vector, vector_to_bytes
-from .json import *
+from .index import UmbIndex
+from .jsons import *
 from .tar import TarReader, TarWriter
+from .umb import ExplicitUmb, read_umb, write_umb
 
 __all__ = [
-    "bytes_to_vector",
+    "TarReader",
+    "TarWriter",
     "JsonLike",
     "json_remove_none_dict_values",
     "json_to_string",
-    "TarReader",
-    "TarWriter",
+    "string_to_json",
+    "bytes_to_json",
+    "json_to_bytes",
+    "UmbIndex",
+    "ExplicitUmb",
+    "read_umb",
+    "write_umb",
 ]

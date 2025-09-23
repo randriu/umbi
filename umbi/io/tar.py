@@ -7,11 +7,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 import tarfile
-from typing import Optional
 
-from .bytes import bytes_to_vector, vector_to_bytes
-from .json import JsonLike, bytes_to_json, json_to_bytes
-from ..vectors.csr import *
+import umbi.binary
+import umbi.vectors
+
+from .jsons import JsonLike, bytes_to_json, json_to_bytes
 
 
 def is_of_vector_type(filetype: str) -> bool:
@@ -58,6 +58,7 @@ class TarReader:
 
     def read_file(self, filename: str, required: bool = False) -> bytes | None:
         """Read raw bytes from a specific file in the tarball"""
+        logger.debug(f"loading {filename} ...")
         if filename not in self.filenames:
             if not required:
                 return None
@@ -80,10 +81,10 @@ class TarReader:
         if filetype == "json":
             return bytes_to_json(data)
         if filetype == "csr":
-            return csr_to_ranges(bytes_to_vector(data, "uint64"))
+            return umbi.vectors.csr_to_ranges(umbi.binary.bytes_to_vector(data, "uint64"))
         if is_of_vector_type(filetype):
             value_type = value_type_of(filetype)
-            return bytes_to_vector(data, value_type)
+            return umbi.binary.bytes_to_vector(data, value_type)
         else:
             raise ValueError(f"unrecognized file type {filetype} for file {filename}")
 
@@ -103,24 +104,27 @@ class TarReader:
             return None
         chunk_ranges = self.read_filetype(filename_csr, "csr", required=required_csr)
         assert isinstance(chunk_ranges, list) or chunk_ranges is None
-        return bytes_to_vector(data, value_type, chunk_ranges=chunk_ranges)
+        return umbi.binary.bytes_to_vector(data, value_type, chunk_ranges=chunk_ranges)
 
 
 class TarWriter:  #
     """An auxiliary class to simplify tar writing."""
 
     @classmethod
-    def tar_write(cls, tarpath: str, filename_data: dict[str, bytes], gzip: bool = True):
+    def tar_write(cls, tarpath: str, filename_data: dict[str, bytes], compression: str = "gz"):
         """
         Create a tarball file with the given contents.
 
         :param tarpath: path to a tarball file
         :param filename_data: a dictionary filename -> binary string
-        :param gzip: if True, the tarball file will be gzipped
+        :param compression: compression algorithm one of ("gz", "bz2", "xz" or "" for no compression)
         """
-        logger.debug(f"writing tarfile {tarpath} ...")
-        mode = "w" if not gzip else "w:gz"
-        with tarfile.open(tarpath, mode=mode) as tar:
+        logger.debug(f"writing tarfile {tarpath} with compression '{compression}' ...")
+        assert compression in ("", "gz", "bz2", "xz"), "unsupported compression algorithm"
+        mode = "w"
+        if compression != "":
+            mode = f"w:{compression}"
+        with tarfile.open(tarpath, mode=mode) as tar:  # type: ignore
             for filename, data in filename_data.items():
                 tar_info = tarfile.TarInfo(name=filename)
                 tar_info.size = len(data)
@@ -132,6 +136,7 @@ class TarWriter:  #
 
     def add_file(self, filename: str, data: bytes):
         """Add a (binary) file to the tarball."""
+        logger.debug(f"writing {filename} ...")
         if filename in self.filename_data:
             logger.warning(f"file {filename} already exists in the tarball")
         self.filename_data[filename] = data
@@ -147,11 +152,11 @@ class TarWriter:  #
         elif filetype == "json":
             data_out = json_to_bytes(data)
         elif filetype == "csr":
-            data_out, chunk_ranges = vector_to_bytes(ranges_to_csr(data), "uint64")
+            data_out, chunk_ranges = umbi.binary.vector_to_bytes(umbi.vectors.ranges_to_csr(data), "uint64")
             assert chunk_ranges is None, "unexpected chunk ranges"
         elif is_of_vector_type(filetype):
             value_type = value_type_of(filetype)
-            data_out, chunk_ranges = vector_to_bytes(data, value_type)
+            data_out, chunk_ranges = umbi.binary.vector_to_bytes(data, value_type)
             assert chunk_ranges is None, "exporting the vector requires the CSR file, but no such file was specified"
         else:
             raise ValueError(f"unrecognized file type {filetype} for file {filename}")
@@ -164,11 +169,13 @@ class TarWriter:  #
             if required:
                 raise ValueError(f"missing required data for {filename}")
             return
-        data_out, chunk_ranges = vector_to_bytes(data, value_type)
+        data_out, chunk_ranges = umbi.binary.vector_to_bytes(data, value_type)
         self.add_file(filename, data_out)
         if chunk_ranges is not None:
             self.add_filetype(filename_csr, "csr", chunk_ranges, required=True)
+        else:
+            logger.debug(f"skipping CSR file {filename_csr}")
 
-    def write(self, tarpath: str, gzip: bool = True):
+    def write(self, tarpath: str):
         """Write all added files to a tarball."""
-        TarWriter.tar_write(tarpath, self.filename_data, gzip=gzip)
+        TarWriter.tar_write(tarpath, self.filename_data)

@@ -11,7 +11,9 @@ authors = [{name = "Roman Andriushchenko", email = "roman.andriu@gmail.com"}]
 license = {file = "LICENSE"}
 dependencies = [
   "click",
-  "marshmallow"
+  "marshmallow",
+  "marshmallow_oneofschema",
+  "bitstring",
 ]
 requires-python = ">=3.11"
 
@@ -26,7 +28,7 @@ dev = [
   "isort",
   "toml-sort",
   "twine",
-  "bumpver"
+  "bumpver",
 ]
 
 [tool.setuptools]

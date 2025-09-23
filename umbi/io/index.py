@@ -18,9 +18,11 @@ from marshmallow import (
     validates,
     validates_schema,
 )
+from marshmallow_oneofschema import OneOfSchema
 
 import umbi
-import umbi.io
+
+from .jsons import *
 
 
 class FieldUint(fields.Int):
@@ -74,7 +76,7 @@ class JsonSchema(Schema):
             return cls().load(json_obj)  # type: ignore[return-value] since post_load will return SimpleNamespace
         except ValidationError as err:
             logger.error(f"{cls} validation error:")
-            logger.error(umbi.io.json_to_string(err.messages))
+            logger.error(json_to_string(err.messages))
             raise err
 
 
@@ -99,7 +101,7 @@ class FileDataSchema(JsonSchema):
     parameters = fields.Raw(data_key="parameters", required=False)
 
     @classmethod
-    def this_tool_object(cls, parameters: umbi.io.JsonLike | None = None):
+    def this_tool_object(cls, parameters: JsonLike | None = None):
         """
         Create a file-data object that reflects that umbi was used to create this index file.
         :param parameters: (optional) umbi parameters
@@ -160,11 +162,6 @@ class AnnotationSchema(JsonSchema):
 class PaddingSchema(JsonSchema):
     padding = FieldUint(data_key="padding", required=True)
 
-    @validates("padding")
-    def validate_padding(self, value):
-        if value <= 0:
-            raise ValidationError("padding must be a positive integer")
-
 
 class VariableSchema(JsonSchema):
     name = fields.String(data_key="name", required=True)
@@ -177,29 +174,41 @@ class VariableSchema(JsonSchema):
     offset = fields.Float(data_key="offset", required=False)
 
 
-class StateValuationsSchema(JsonSchema):
-    alignment = FieldUint(required=True)
-    variables = fields.List(fields.Raw(), required=True)
+class ValuationFieldSchema(OneOfSchema):
+    type_schemas = {
+        "padding": PaddingSchema,
+        "variable": VariableSchema,
+    }
 
-    @validates("variables")
-    def validate_variables(self, value):
-        if not isinstance(value, list):  # is this necessary?
-            raise ValidationError("variables must be a list")
-        for v in value:
-            if not isinstance(v, dict):
-                raise ValidationError("each variable must be a dict")
-            if "padding" in v:
-                try:
-                    PaddingSchema().load(v)
-                except ValidationError as err:
-                    raise ValidationError(f"invalid padding variable: {err.messages}")
-            elif "name" in v and "type" in v:
-                try:
-                    VariableSchema().load(v)
-                except ValidationError as err:
-                    raise ValidationError(f"invalid variable: {err.messages}")
-            else:
-                raise ValidationError("variable must be either a padding or variable dict")
+    # custom discriminator field since the default 'type' field is used in VariableSchema
+    type_field = "_discriminator"
+
+    def get_obj_type(self, obj):
+        """Determine which schema to use based on the object's attributes."""
+        if hasattr(obj, "padding"):
+            return "padding"
+        elif hasattr(obj, "name") and hasattr(obj, "type"):
+            return "variable"
+        else:
+            raise ValueError("Object must be either a padding or variable namespace")
+
+    def load(self, json_data, *args, **kwargs):
+        """Add discriminator field before loading."""
+        assert isinstance(json_data, dict)
+        json_data = dict(json_data, _discriminator="padding" if "padding" in json_data else "variable")
+        return super().load(json_data, *args, **kwargs)
+
+    def dump(self, obj, *args, **kwargs):
+        """Remove discriminator field after dumping."""
+        result = super().dump(obj, *args, **kwargs)
+        assert isinstance(result, dict)
+        result.pop("_discriminator", None)
+        return result
+
+
+class StateValuationsSchema(JsonSchema):
+    alignment = FieldUint(data_key="alignment", required=True)
+    variables = fields.List(fields.Nested(ValuationFieldSchema), data_key="variables", required=True)
 
 
 class AnnotationsSchema(JsonSchema):
@@ -217,7 +226,7 @@ class AnnotationsSchema(JsonSchema):
         obj = super().empty_object()
         obj.rewards = dict[str, SimpleNamespace]()
         obj.aps = dict[str, SimpleNamespace]()
-        obj.state_valuations = dict[str, SimpleNamespace]()
+        obj.state_valuations = StateValuationsSchema.empty_object()
         return obj
 
 
@@ -256,7 +265,7 @@ class UmbIndex:
         self.annotations = AnnotationsSchema.empty_object()
 
     @classmethod
-    def from_json(cls, json_obj: umbi.io.JsonLike) -> "UmbIndex":
+    def from_json(cls, json_obj: JsonLike) -> "UmbIndex":
         """Parse from a json object."""
         info = UmbIndexSchema.from_json(json_obj)
         obj = cls()
@@ -285,7 +294,7 @@ class UmbIndex:
             setattr(other, field, getattr(self, field))
         return other
 
-    def to_json(self, use_this_tool_file_data: bool = False) -> umbi.io.JsonLike:
+    def to_json(self, use_this_tool_file_data: bool = False) -> JsonLike:
         """
         Convert to a json object.
         :param use_this_tool_file_data: if True, the file-data field will be set to the values corresponding to this tool
@@ -303,10 +312,10 @@ class UmbIndex:
         if use_this_tool_file_data:
             info.file_data = FileDataSchema.this_tool_object()
         json_obj = UmbIndexSchema().dump(info)
-        assert isinstance(json_obj, umbi.io.JsonLike)
-        json_obj = umbi.io.json_remove_none_dict_values(json_obj)
+        assert isinstance(json_obj, JsonLike)
+        json_obj = json_remove_none_dict_values(json_obj)
         return json_obj
 
     def __str__(self) -> str:
         """Convert to a string (json format)."""
-        return umbi.io.json_to_string(self.to_json())
+        return json_to_string(self.to_json())

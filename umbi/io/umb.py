@@ -1,3 +1,7 @@
+"""
+Utilities for reading and writing umbfiles.
+"""
+
 import logging
 from typing import Optional
 
@@ -7,7 +11,11 @@ from enum import Enum
 from types import SimpleNamespace
 
 import umbi
-import umbi.io
+import umbi.binary
+
+from .index import UmbIndex
+from .jsons import JsonLike
+from .tar import TarReader, TarWriter
 
 
 class UmbFile(Enum):
@@ -32,12 +40,15 @@ class UmbFile(Enum):
     BRANCH_TO_PROBABILITY = ("branch-to-probability.bin", "csr")
     BRANCH_PROBABILITIES = ("branch-probabilities.bin", "bytes")
 
+    STATE_TO_VALUATION = ("state-to-valuation.bin", "csr")
+    STATE_VALUATIONS = ("state-valuations.bin", "bytes")
+
 
 class ExplicitUmb:
     """Class for an explicit representation of a umbfile. The goal of this class is to have all the data is stored in numpy arrays and lists."""
 
     def __init__(self):
-        self.index: umbi.UmbIndex = umbi.UmbIndex()
+        self.index: UmbIndex = UmbIndex()
 
         self.initial_states = None
         self.state_to_choice = None
@@ -57,13 +68,8 @@ class ExplicitUmb:
         self.aps = None
         self.state_valuations = None
 
-    def validate(self):
-        # TODO implement
-        # logger.debug("UMB validation requested but is not implemented yet")
-        return
 
-
-class UmbReader(umbi.io.TarReader):
+class UmbReader(TarReader):
     def __init__(self, tarpath: str):
         super().__init__(tarpath)
         # to keep track of which files were read
@@ -77,7 +83,6 @@ class UmbReader(umbi.io.TarReader):
 
     def read_file(self, filename: str, required: bool = False) -> bytes | None:
         """Read raw bytes from a specific file in the tarball. Mark the file as read."""
-        logger.debug(f"attempting to read {filename} ...")
         if filename in self.filenames:
             self.filename_read[filename] = True
         return super().read_file(filename, required)
@@ -86,43 +91,68 @@ class UmbReader(umbi.io.TarReader):
         filename, filetype = file.value
         return self.read_filetype(filename, filetype, required)
 
-    def read_common_csr(self, file: UmbFile, value_type: str, required: bool, file_csr: UmbFile, required_csr: bool = False):
+    def read_common_csr(
+        self, file: UmbFile, value_type: str, required: bool, file_csr: UmbFile, required_csr: bool = False
+    ):
         filename, _ = file.value
         filename_csr, _ = file_csr.value
         return self.read_filetype_csr(filename, value_type, required, filename_csr, required_csr)
 
-    # TODO make annotation into a dedicated class
-    def read_annotation(self, label: str, annotation_dict: dict[str, SimpleNamespace] | None):
+    def read_annotation(self, label: str, name: str, annotation: SimpleNamespace) -> dict[str, list]:
         """
-        Read annotation files. The values from the files will be stored in the corresponding annotation object as a new dictionary mapping applies-to -> values
+        Read annotation files for a single annotation.
         :param label: annotation label, usually one of ["rewards","aps"]
-        :param annotation_dict: a dictionary annotation name -> annotation
+        :param name: annotation name
+        :param annotation: annotation info (SimpleNamespace)
+        :return: dict mapping applies_to -> values
         """
-        if annotation_dict is None:
-            return
-        for name, annotation in annotation_dict.items():
-            annotation.values = dict[str, list]()
-            for applies in annotation.applies_to:
-                path = f"annotations/{label}/{name}/for-{applies}"
-                vector = self.read_filetype_csr(
-                    f"{path}/values.bin", annotation.type, required=True, filename_csr=f"{path}/to-value.bin"
-                )
-                assert vector is not None
-                annotation.values[applies] = vector
+        applies_values = dict()
+        for applies in annotation.applies_to:
+            path = f"annotations/{label}/{name}/for-{applies}"
+            vector = self.read_filetype_csr(
+                f"{path}/values.bin", annotation.type, required=True, filename_csr=f"{path}/to-values.bin"
+            )
+            assert vector is not None
+            applies_values[applies] = vector
+        return applies_values
 
-    def read_state_valuations(self, state_valuations: dict[str, object] | None):
-        # TODO implement
+    def read_annotations(
+        self, label: str, annotation_info: dict[str, SimpleNamespace] | None
+    ) -> dict[str, dict[str, list]] | None:
+        """
+        Read annotation files for all annotations in annotation_info.
+        :param label: annotation label, usually one of ["rewards","aps"]
+        :param annotation_info: a dictionary annotation name -> annotation
+        :return: dict mapping annotation name -> applies_to -> values
+        """
+        if annotation_info is None:
+            return None
+        name_applies_values = dict()
+        for name, annotation in annotation_info.items():
+            name_applies_values[name] = self.read_annotation(label, name, annotation)
+        return name_applies_values
+
+    def read_state_valuations(self, state_valuations: SimpleNamespace | None, num_states: int):
         if state_valuations is None:
-            return
-        logger.warning("state valuations import is not implemented yet")
-        return
+            return None
+        ranges = self.read_common(UmbFile.STATE_TO_VALUATION, required=False)
+        if ranges is None:
+            ranges = [(s, s + 1) for s in range(num_states)]
+        assert isinstance(ranges, (list, type(tuple([int, int]))))
+        a = state_valuations.alignment
+        ranges = [(x * a, y * a) for (x, y) in ranges]
+        valuations = self.read_common(UmbFile.STATE_VALUATIONS, required=True)
+        assert isinstance(valuations, bytes)
+        value_type = umbi.binary.CompositeType.from_namespace(state_valuations.variables)
+        return umbi.binary.bytes_to_vector(valuations, value_type, ranges)
 
     def read_umb(self):  # type: ignore
         logger.info(f"loading umbfile from {self.tarpath} ...")
         umb = ExplicitUmb()
 
         json_obj = self.read_common(UmbFile.INDEX_JSON, required=True)
-        umb.index = umbi.UmbIndex.from_json(json_obj)
+        assert isinstance(json_obj, JsonLike)
+        umb.index = UmbIndex.from_json(json_obj)
 
         umb.initial_states = self.read_common(UmbFile.INITIAL_STATES, required=True)
         umb.state_to_choice = self.read_common(UmbFile.STATE_TO_CHOICE)
@@ -136,26 +166,32 @@ class UmbReader(umbi.io.TarReader):
 
         umb.choice_to_branch = self.read_common(UmbFile.CHOICE_TO_BRANCH)
         umb.choice_to_action = self.read_common(UmbFile.CHOICE_TO_ACTION)
-        umb.action_strings = self.read_common_csr(UmbFile.ACTION_STRINGS, "string", False, UmbFile.ACTION_TO_ACTION_STRING, True)
+        umb.action_strings = self.read_common_csr(
+            UmbFile.ACTION_STRINGS, "string", False, UmbFile.ACTION_TO_ACTION_STRING, True
+        )
 
         umb.branch_to_target = self.read_common(UmbFile.BRANCH_TO_TARGET)
         if umb.index.transition_system.branch_probability_type is not None:
             umb.branch_probabilities = self.read_common_csr(
-                UmbFile.BRANCH_PROBABILITIES, umb.index.transition_system.branch_probability_type, False,
-                UmbFile.BRANCH_TO_PROBABILITY, False
+                UmbFile.BRANCH_PROBABILITIES,
+                umb.index.transition_system.branch_probability_type,
+                False,
+                UmbFile.BRANCH_TO_PROBABILITY,
+                False,
             )
 
-        self.read_annotation("rewards", umb.index.annotations.rewards)
-        self.read_annotation("aps", umb.index.annotations.aps)
-        self.read_state_valuations(umb.index.annotations.state_valuations)
+        umb.rewards = self.read_annotations("rewards", umb.index.annotations.rewards)
+        umb.aps = self.read_annotations("aps", umb.index.annotations.aps)
+        umb.state_valuations = self.read_state_valuations(
+            umb.index.annotations.state_valuations, umb.index.transition_system.num_states
+        )
 
         self.warn_about_unread_files()
-        umb.validate()
         logger.info(f"finished loading the umbfile")
         return umb
 
 
-class UmbWriter(umbi.io.TarWriter):
+class UmbWriter(TarWriter):
 
     def add_common(self, file: UmbFile, data, required: bool = False):
         filename, filetype = file.value
@@ -166,29 +202,47 @@ class UmbWriter(umbi.io.TarWriter):
         filename_csr, _ = file_csr.value
         self.add_filetype_csr(filename, value_type, data, required, filename_csr)
 
-    def add_annotation(self, label: str, annotation_dict: dict[str, SimpleNamespace] | None):
+    def add_annotation(self, label: str, name: str, annotation_info: SimpleNamespace, applies_values: dict[str, list]):
         """
-        Read annotation files.
+        Add files for an annotation.
         :param label: annotation label, usually one of ["rewards","aps"]
-        :param annotation_dict: a dictionary annotation name -> annotation
+        :param annotation_info: a dictionary annotation name -> annotation
         """
-        if annotation_dict is None:
-            return
-        for name, annotation in annotation_dict.items():
-            for applies, values in annotation.values.items():
-                prefix = f"annotations/{label}/{name}/for-{applies}"
-                self.add_filetype_csr(
-                    f"{prefix}/values.bin", annotation.type, values, required=True, filename_csr=f"{prefix}/to-values.bin"
-                )
+        for applies, values in applies_values.items():
+            prefix = f"annotations/{label}/{name}/for-{applies}"
+            self.add_filetype_csr(
+                f"{prefix}/values.bin",
+                annotation_info.type,
+                values,
+                required=True,
+                filename_csr=f"{prefix}/to-values.bin",
+            )
 
-    def add_state_valuations(self, state_valuations: dict[str, list[float]] | None):
-        if state_valuations is None:
+    def add_annotations(
+        self,
+        label: str,
+        annotation_info: dict[str, SimpleNamespace] | None,
+        annotation_values: dict[str, dict[str, list]] | None = None,
+    ):
+        if annotation_info is None:
             return
-        logger.warning("state valuations export is not implemented yet")
-        return
+        assert annotation_values is not None
+        for name, annotation in annotation_info.items():
+            assert name in annotation_values, f"missing values for annotation {name}"
+            self.add_annotation(label, name, annotation, annotation_values[name])
+
+    def add_state_valuations(self, state_valuations_index: SimpleNamespace | None, state_valuations: list[dict] | None):
+        if state_valuations_index is None:
+            return
+        assert state_valuations is not None
+        value_type = umbi.binary.CompositeType.from_namespace(state_valuations_index.variables)
+        bytestring, ranges = umbi.binary.vector_to_bytes(state_valuations, value_type)
+        self.add_common(UmbFile.STATE_VALUATIONS, bytestring)
+        assert ranges is not None
+        state_valuations_index.alignment = 1  # TODO compute nontrivial alignment
+        self.add_common(UmbFile.STATE_TO_VALUATION, ranges)
 
     def write_umb(self, umb: ExplicitUmb, umbpath: str):
-        umb.validate()
         logger.info(f"writing umbfile to {umbpath} ...")
         self.add_common(UmbFile.INDEX_JSON, umb.index.to_json(), required=True)
         self.add_common(UmbFile.INITIAL_STATES, umb.initial_states, required=True)
@@ -211,9 +265,9 @@ class UmbWriter(umbi.io.TarWriter):
             umb.index.transition_system.branch_probability_type,
             UmbFile.BRANCH_TO_PROBABILITY,
         )
-        self.add_annotation("rewards", umb.index.annotations.rewards)
-        self.add_annotation("aps", umb.index.annotations.aps)
-        self.add_state_valuations(umb.index.annotations.state_valuations)
+        self.add_annotations("rewards", umb.index.annotations.rewards, umb.rewards)
+        self.add_annotations("aps", umb.index.annotations.aps, umb.aps)
+        self.add_state_valuations(umb.index.annotations.state_valuations, umb.state_valuations)
         self.write(umbpath)
         logger.info(f"finished writing the umbfile")
 
