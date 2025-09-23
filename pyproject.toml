@@ -32,7 +32,7 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["umbi", "umbi.io"]
+packages = ["umbi", "umbi.binary", "umbi.io", "umbi.vectors"]
 include-package-data = true
 
 [project.scripts]
