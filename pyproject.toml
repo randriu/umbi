@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "umbi"
-version = "0.0.7"
+version = "0.0.8"
 description = "Library for binary encoding of annotated transition systems"
 readme = "README.md"
 authors = [{name = "Roman Andriushchenko", email = "roman.andriu@gmail.com"}]
@@ -43,7 +43,7 @@ format_version = 0
 format_revision = 1
 
 [tool.bumpver]
-current_version = "0.0.7"
+current_version = "0.0.8"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 tag_message = "v{new_version}"
