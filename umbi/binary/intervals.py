@@ -1,8 +1,9 @@
 """Utilities for de()serializing intervals."""
 
-from .fractions import *
+from .rationals import *
 from .primitives import *
 
+import fractions
 from bitstring import BitArray
 
 def interval_to_bytes(value: tuple[object, object], value_type: str, little_endian: bool = True) -> bytes:
@@ -12,9 +13,9 @@ def interval_to_bytes(value: tuple[object, object], value_type: str, little_endi
     if base_value_type == "rational":
         assert all(isinstance(v, fractions.Fraction) for v in value), "expected a pair of fractions"
         # ensure both rationals use the same size for numerator and denominator
-        term_size = max(fraction_size(v) for v in value) // 2
-        lower = fraction_to_bytes(value[0], term_size, little_endian)
-        upper = fraction_to_bytes(value[1], term_size, little_endian)
+        term_size = max(rational_size(v) for v in value) // 2
+        lower = rational_to_bytes(value[0], term_size, little_endian)
+        upper = rational_to_bytes(value[1], term_size, little_endian)
     else:
         assert all(isinstance(v, int | float) for v in value), "expected a pair of numbers"
         lower = primitive_to_bytes(value[0], base_value_type, little_endian)
@@ -28,8 +29,8 @@ def bytes_to_interval(data: bytes, value_type: str, little_endian: bool = True) 
     base_value_type = value_type.replace("-interval", "")
     lower, upper = None, None
     if base_value_type == "rational":
-        lower = bytes_to_fraction(data[:mid], little_endian)
-        upper = bytes_to_fraction(data[mid:], little_endian)
+        lower = bytes_to_rational(data[:mid], little_endian)
+        upper = bytes_to_rational(data[mid:], little_endian)
     else:
         lower = bytes_to_primitive(data[:mid], base_value_type, little_endian)
         upper = bytes_to_primitive(data[mid:], base_value_type, little_endian)

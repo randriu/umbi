@@ -1,14 +1,14 @@
-from umbi import binary
+import umbi
+import umbi.binary as binary
 from bitstring import BitArray
 
 def main():
 
-    def print_bits(bits: BitArray):
-        bitstr = bits.bin
+    def print_bytes(bytestring: bytes):
+        for byte in bytestring:
+            print(f"{byte:08b}", end=" ")
         print()
-        for i in range(0, len(bitstr), 8):
-            byte = bitstr[i:i+8]
-            print(byte)
+
 
     # bits = BitArray(int=-16897, length=16) + BitArray(uint=56, length=8)
     # for i in range(0, len(bits.bin), 8):
@@ -26,25 +26,27 @@ def main():
     }
 
 
-    # handle composite data types:
-    # fields = [
-    #     binary.Field("v0", "bool", 2),
-    #     binary.Field("v1", "uint", 7),
-    #     binary.Field("v2", "string", None),
-    #     binary.Field("v3", "bool", 3),
-    # ]
-    # values = {
-    #     "v0": True,
-    #     "v1": 27,
-    #     "v2": "ab",
-    #     "v3": True,
-    # }
+    fields = [
+        binary.Field("v0", "bool", 2),
+        binary.Field("v1", "uint", 7),
+        binary.Padding(7),
+        binary.Field("v2", "string", None),
+        binary.Field("v3", "bool", 3),
+        binary.Padding(5),
+    ]
+    values = {
+        "v0": True,
+        "v1": 27,
+        "v2": "hello",
+        "v3": True,
+    }
 
-    
-    bytestring,field_info = binary.composite_to_bytes(fields,values)
-    print(field_info)
-    bitarr = BitArray(bytes=bytestring)
-    print_bits(bitarr)
+    bytestring,fields = binary.composite_pack(fields,values)
+    print_bytes(bytestring)
+    print(fields)
+
+    values_out = binary.composite_unpack(bytestring, fields)
+    print(values_out)
 
 
 

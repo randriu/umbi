@@ -5,6 +5,43 @@ Utilities for (de)serializing integers and floats.
 from bitstring import BitArray
 import struct
 
+def split_bytes(bytestring: bytes, length: int) -> tuple[bytes, bytes]:
+    """Split a bytestring into chunks of the given size."""
+    assert length > 0, "chunk size must be positive"
+    assert len(bytestring) >= length, "data is shorter than the specified length"
+    return bytestring[:length], bytestring[length:]
+
+def check_int_range(value: int, num_bits: int):
+    max_value = (1 << (num_bits - 1)) - 1
+    min_value = -(1 << (num_bits - 1))
+    if not (min_value <= value <= max_value):
+        raise ValueError(f"integer value {value} is out of range for a {num_bits}-bit int [{min_value}, {max_value}]")
+
+def check_uint_range(value: int, num_bits: int):
+    max_value = (1 << num_bits) - 1
+    min_value = 0
+    if not (min_value <= value <= max_value):
+        raise ValueError(f"integer value {value} is out of range for a {num_bits}-bit uint [{min_value}, {max_value}]")
+
+def int_to_bytes(value: int, num_bytes: int, little_endian: bool = True) -> bytes:
+    """Convert a single integer value to a fixed-length byte representation."""
+    check_int_range(value, num_bytes * 8)
+    return value.to_bytes(num_bytes, byteorder="little" if little_endian else "big", signed=True)
+    
+def uint_to_bytes(value: int, num_bytes: int, little_endian: bool = True) -> bytes:
+    """Convert a single unsigned integer value to a fixed-length byte representation."""
+    check_uint_range(value, num_bytes * 8)
+    return value.to_bytes(num_bytes, byteorder="little" if little_endian else "big", signed=False)
+
+def bytes_to_int(data: bytes, little_endian: bool = True) -> int:
+    """Convert a binary string to a single integer value."""
+    return int.from_bytes(data, byteorder="little" if little_endian else "big", signed=True)
+
+def bytes_to_uint(data: bytes, little_endian: bool = True) -> int:
+    """Convert a binary string to a single unsigned integer value."""
+    return int.from_bytes(data, byteorder="little" if little_endian else "big", signed=False)
+
+
 def assert_is_primitive(value_type: str):
     """Assert that the given value type is a primitive type."""
     primitives = {"int16", "uint16", "int32", "int64", "uint32", "uint64", "double"}
@@ -59,21 +96,17 @@ def bytes_to_primitive(data: bytes, value_type: str, little_endian: bool = True)
     return struct.unpack(f"{endian_format}{type_format}", data)[0]
 
 
-def int_to_bits(value: int, num_bits: int) -> BitArray:    
-    max_value = (1 << (num_bits - 1)) - 1
-    min_value = -(1 << (num_bits - 1))
-    if not (min_value <= value <= max_value):
-        raise ValueError(f"integer value {value} is out of range for a {num_bits}-bit int [{min_value}, {max_value}]")
+
+
+def int_to_bits(value: int, num_bits: int) -> BitArray:
+    check_int_range(value, num_bits)
     """Convert a single integer value to a fixed-length bit representation."""
     return BitArray(int=value, length=num_bits)
 
 
 def uint_to_bits(value: int, num_bits: int) -> BitArray:
     """Convert a single unsigned integer value to a fixed-length bit representation."""
-    max_value = (1 << num_bits) - 1
-    min_value = 0
-    if not (min_value <= value <= max_value):
-        raise ValueError(f"integer value {value} is out of range for a {num_bits}-bit uint [{min_value}, {max_value}]")
+    check_uint_range(value, num_bits)
     return BitArray(uint=value, length=num_bits)
 
 
@@ -112,7 +145,7 @@ def bits_to_double(bits: BitArray) -> float:
     """Convert a BitArray to a single double value."""
     return bits.float
 
-def bits_to_primitive(bits: BitArray, value_type: str, little_endian: bool = True) -> int | float:
+def bits_to_primitive(bits: BitArray, value_type: str) -> int | float:
     """Convert a BitArray to a single primitive value of the given type."""
     assert value_type in ["int", "uint", "double"], f"unsupported primitive type: {value_type}"
 

@@ -20,7 +20,7 @@ def bitvector_to_bytes(bitvector: list[bool]) -> bytes:
     return bytes(byte_array)
 
 
-def bool_to_bits(value: bool, num_bits: Optional[int] = None) -> BitArray:
+def boolean_to_bits(value: bool, num_bits: Optional[int] = None) -> BitArray:
     """Convert a single boolean value to a fixed-length bit representation."""
     value_uint = 1 if value else 0
     if num_bits is None:
@@ -28,6 +28,6 @@ def bool_to_bits(value: bool, num_bits: Optional[int] = None) -> BitArray:
     return uint_to_bits(value_uint, num_bits)
 
 
-def bits_to_bool(bits: BitArray) -> bool:
+def bits_to_boolean(bits: BitArray) -> bool:
     """Convert a BitArray to a single boolean value."""
     return bits_to_uint(bits) != 0

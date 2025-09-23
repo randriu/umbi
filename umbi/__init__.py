@@ -1,21 +1,19 @@
 import os
 import tomllib
 
-from .index import UmbIndex
+from .io.index import UmbIndex
 from .logger import set_log_level, setup_logging
-from .umb import ExplicitUmb, read_umb, write_umb
 
-import umbi.binary
-import umbi.vectors
-import umbi.io
+import umbi.binary as binary
+import umbi.vectors as vectors
+import umbi.io as io
 
 __all__ = [
     "set_log_level",
     "setup_logging",
-    "UmbIndex",
-    "ExplicitUmb",
-    "read_umb",
-    "write_umb",
+    "binary",
+    "vectors",
+    "io"
 ]
 
 def get_pyproject_attribute(attribute, default):

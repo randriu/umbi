@@ -5,6 +5,7 @@ umbi.binary: Utilities for (de)serialization of basic types.
 # Import all functions from the split modules
 from .api import *
 from .composites import *
+from .sequences import *
 
 __all__ = [
     "value_to_bytes",
@@ -13,5 +14,7 @@ __all__ = [
     "bytes_to_primitive",
     "Field",
     "Padding",
-    "composite_to_bytes",
+    "CompositeType",
+    "bytes_to_vector",
+    "vector_to_bytes",
 ]
