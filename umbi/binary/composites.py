@@ -160,7 +160,6 @@ class CompositePacker:
         """Add padding bits to the buffer."""
         assert num_bits > 0
         self.append_to_buffer(BitArray(uint=0, length=num_bits))
-        self.assert_buffer_empty()
 
     def pack_field(self, field: Field, value: object):
         """Pack a single field into the buffer or the bytestring."""
@@ -227,7 +226,6 @@ class CompositeUnpacker:
 
     def skip_padding(self, num_bits: int):
         self.extract_from_buffer(num_bits)
-        self.assert_buffer_empty()
 
     def unpack_field(self, field: Field) -> object:
         """Unpack a single field from the buffer or the bytestring."""
