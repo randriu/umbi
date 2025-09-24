@@ -31,9 +31,7 @@ def string_unpack(bytestring: bytes) -> tuple[str, bytes]:
     """
     prefix_size = 2  # size of uint16
     prefix, bytestring = split_bytes(bytestring, prefix_size)
-    print("prefix =", prefix)
     length = bytes_to_uint(prefix)
-    print("length =", length)
     string_bytes, remainder = split_bytes(bytestring, length)
     string = bytes_to_string(string_bytes)
     return string, remainder
