@@ -132,7 +132,7 @@ class UmbReader(TarReader):
             name_applies_values[name] = self.read_annotation(label, name, annotation)
         return name_applies_values
 
-    def read_state_valuations(self, state_valuations: SimpleNamespace | None, num_states: int):
+    def read_state_valuations(self, state_valuations: Optional[SimpleNamespace], num_states: int) -> Optional[list[dict]]:
         if state_valuations is None:
             return None
         ranges = self.read_common(UmbFile.STATE_TO_VALUATION, required=False)
@@ -183,7 +183,7 @@ class UmbReader(TarReader):
         umb.rewards = self.read_annotations("rewards", umb.index.annotations.rewards)
         umb.aps = self.read_annotations("aps", umb.index.annotations.aps)
         umb.state_valuations = self.read_state_valuations(
-            umb.index.annotations.state_valuations, umb.index.transition_system.num_states
+            umb.index.state_valuations, umb.index.transition_system.num_states
         )
 
         self.warn_about_unread_files()
@@ -267,7 +267,7 @@ class UmbWriter(TarWriter):
         )
         self.add_annotations("rewards", umb.index.annotations.rewards, umb.rewards)
         self.add_annotations("aps", umb.index.annotations.aps, umb.aps)
-        self.add_state_valuations(umb.index.annotations.state_valuations, umb.state_valuations)
+        self.add_state_valuations(umb.index.state_valuations, umb.state_valuations)
         self.write(umbpath)
         logger.info(f"finished writing the umbfile")
 

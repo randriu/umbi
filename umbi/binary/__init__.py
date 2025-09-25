@@ -10,8 +10,6 @@ from .sequences import *
 __all__ = [
     "value_to_bytes",
     "bytes_to_value",
-    "primitive_to_bytes",
-    "bytes_to_primitive",
     "Field",
     "Padding",
     "CompositeType",

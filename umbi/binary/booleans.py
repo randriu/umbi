@@ -3,10 +3,7 @@ Utilities for (de)serializing booleans and bitvectors.
 """
 
 from typing import Optional
-
 from bitstring import BitArray
-
-from .primitives import *
 
 
 def bytes_to_bitvector(bytestring: bytes) -> list[bool]:
@@ -23,14 +20,14 @@ def bitvector_to_bytes(bitvector: list[bool]) -> bytes:
     return bytes(byte_array)
 
 
-def boolean_to_bits(value: bool, num_bits: Optional[int] = None) -> BitArray:
+def boolean_pack(value: bool, num_bits: Optional[int] = None) -> BitArray:
     """Convert a single boolean value to a fixed-length bit representation."""
     value_uint = 1 if value else 0
     if num_bits is None:
         num_bits = 1
-    return uint_to_bits(value_uint, num_bits)
+    return BitArray(uint=value_uint, length=num_bits)
 
 
-def bits_to_boolean(bits: BitArray) -> bool:
+def boolean_unpack(bits: BitArray) -> bool:
     """Convert a BitArray to a single boolean value."""
-    return bits_to_uint(bits) != 0
+    return bits.uint != 0

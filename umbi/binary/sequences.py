@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 from .api import *
 from .booleans import *
 from .composites import *
-from .primitives import *
+from .integers import *
 
 
 def bytes_into_chunk_ranges(data: bytes, chunk_ranges: list[tuple[int, int]]) -> list[bytes]:
