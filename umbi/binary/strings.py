@@ -2,7 +2,8 @@
 Utilities for (de)serializing strings.
 """
 
-from .primitives import *
+from .integers import uint_to_bytes, bytes_to_uint
+from .utils import split_bytes
 
 
 def bytes_to_string(bytestring: bytes) -> str:

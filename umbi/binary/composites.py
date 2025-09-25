@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from bitstring import BitArray
 
 from .api import *
+from .utils import split_bytes
 
 
 @dataclass(frozen=False)
@@ -176,11 +177,11 @@ class CompositePacker:
             value_bits = None
             if field.type == "bool":
                 assert isinstance(value, bool)
-                value_bits = boolean_to_bits(value, field.size)
+                value_bits = boolean_pack(value, field.size)
             else:
                 assert isinstance(value, (int, float))
                 assert field.size is not None
-                value_bits = primitive_to_bits(value, field.type, field.size)
+                value_bits = numeric_pack(value, field.type, field.size)
             self.append_to_buffer(value_bits)
 
     def pack_fields(self, value_type: CompositeType, values: dict[str, object]) -> bytes:
@@ -240,9 +241,9 @@ class CompositeUnpacker:
             assert field.size is not None
             bits = self.extract_from_buffer(field.size)
             if field.type == "bool":
-                value = bits_to_boolean(bits)
+                value = boolean_unpack(bits)
             else:
-                value = bits_to_primitive(bits, field.type)
+                value = numeric_unpack(bits, field.type)
         return value
 
     def unpack_fields(self, value_type: CompositeType) -> dict[str, object]:

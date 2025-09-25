@@ -159,6 +159,24 @@ class AnnotationSchema(JsonSchema):
     upper = fields.Float(data_key="upper", required=False)
 
 
+class AnnotationsSchema(JsonSchema):
+    """A schema annotations."""
+
+    rewards = fields.Dict(
+        keys=fields.String(), values=fields.Nested(AnnotationSchema), data_key="rewards", required=False
+    )
+    aps = fields.Dict(keys=fields.String(), values=fields.Nested(AnnotationSchema), data_key="aps", required=False)
+
+    @classmethod
+    def empty_object(cls):
+        """Create an empty object with attributes (set to None) corresponding to the fields of schema."""
+        obj = super().empty_object()
+        obj.rewards = dict[str, SimpleNamespace]()
+        obj.aps = dict[str, SimpleNamespace]()
+        obj.state_valuations = StateValuationsSchema.empty_object()
+        return obj
+
+
 class PaddingSchema(JsonSchema):
     padding = FieldUint(data_key="padding", required=True)
 
@@ -172,6 +190,15 @@ class VariableSchema(JsonSchema):
     lower = fields.Float(data_key="lower", required=False)
     upper = fields.Float(data_key="upper", required=False)
     offset = fields.Float(data_key="offset", required=False)
+
+    @post_load
+    def validate_post_load(self, data, **kwargs):
+        for field in ("lower", "upper", "offset"):
+            if getattr(data, field, None) is not None:
+                raise NotImplementedError(
+                    f"feature not implemented: '{field}' must be None, but got {getattr(data, field)}."
+                )
+        return data
 
 
 class ValuationFieldSchema(OneOfSchema):
@@ -206,28 +233,10 @@ class ValuationFieldSchema(OneOfSchema):
         return result
 
 
+
 class StateValuationsSchema(JsonSchema):
     alignment = FieldUint(data_key="alignment", required=True)
     variables = fields.List(fields.Nested(ValuationFieldSchema), data_key="variables", required=True)
-
-
-class AnnotationsSchema(JsonSchema):
-    """A schema annotations."""
-
-    rewards = fields.Dict(
-        keys=fields.String(), values=fields.Nested(AnnotationSchema), data_key="rewards", required=False
-    )
-    aps = fields.Dict(keys=fields.String(), values=fields.Nested(AnnotationSchema), data_key="aps", required=False)
-    state_valuations = fields.Nested(StateValuationsSchema, data_key="state-valuations", required=False)
-
-    @classmethod
-    def empty_object(cls):
-        """Create an empty object with attributes (set to None) corresponding to the fields of schema."""
-        obj = super().empty_object()
-        obj.rewards = dict[str, SimpleNamespace]()
-        obj.aps = dict[str, SimpleNamespace]()
-        obj.state_valuations = StateValuationsSchema.empty_object()
-        return obj
 
 
 class UmbIndexSchema(JsonSchema):
@@ -239,6 +248,7 @@ class UmbIndexSchema(JsonSchema):
     file_data = fields.Nested(FileDataSchema, data_key="file-data", required=False)
     transition_system = fields.Nested(TransitionSystemSchema, data_key="transition-system", required=True)
     annotations = fields.Nested(AnnotationsSchema, data_key="annotations", required=False)
+    state_valuations = fields.Nested(StateValuationsSchema, data_key="state-valuations", required=False)
 
     @classmethod
     def empty_object(cls):
@@ -250,6 +260,7 @@ class UmbIndexSchema(JsonSchema):
         obj.file_data = FileDataSchema.empty_object()
         obj.transition_system = TransitionSystemSchema.empty_object()
         obj.annotations = AnnotationsSchema.empty_object()
+        obj.state_valuations = StateValuationsSchema.empty_object()
         return obj
 
 
@@ -263,6 +274,7 @@ class UmbIndex:
         self.file_data = FileDataSchema.empty_object()
         self.transition_system = TransitionSystemSchema.empty_object()
         self.annotations = AnnotationsSchema.empty_object()
+        self.state_valuations = StateValuationsSchema.empty_object()
 
     @classmethod
     def from_json(cls, json_obj: JsonLike) -> "UmbIndex":
@@ -276,6 +288,7 @@ class UmbIndex:
             "file_data",
             "transition_system",
             "annotations",
+            "state_valuations",
         ]:
             setattr(obj, field, getattr(info, field))
         return obj
@@ -290,6 +303,7 @@ class UmbIndex:
             "file_data",
             "transition_system",
             "annotations",
+            "state_valuations",
         ]:
             setattr(other, field, getattr(self, field))
         return other
@@ -307,6 +321,7 @@ class UmbIndex:
             "file_data",
             "transition_system",
             "annotations",
+            "state_valuations",
         ]:
             setattr(info, field, getattr(self, field))
         if use_this_tool_file_data:
