@@ -33,9 +33,7 @@ class Field:
 
     name: str
     type: str
-    size: Optional[int] = (
-        None  # number of bits for values of fixed-size types; None for variable-size types (string, rational)
-    )
+    size: Optional[int] = None # number of bits for values of fixed-size types; None for variable-size types (string, rational)
     lower: Optional[float] = None  # lower bound (for numeric types)
     upper: Optional[float] = None  # upper bound (for numeric types)
     offset: Optional[float] = None  # lower value offset (for numeric types)
@@ -99,39 +97,40 @@ class CompositeType:
     def validate(self):
         for item in self._fields:
             item.validate()
+        #TODO check alignment
 
-    @staticmethod
-    def new_padding(total_bits: int) -> Padding | None:
-        """Create a new padding field to align the total_bits to the next byte boundary."""
-        padding = (8 - total_bits % 8) % 8
-        if padding > 0:
-            return Padding(padding)
-        return None
+    # @staticmethod
+    # def new_padding(total_bits: int) -> Padding | None:
+    #     """Create a new padding field to align the total_bits to the next byte boundary."""
+    #     padding = (8 - total_bits % 8) % 8
+    #     if padding > 0:
+    #         return Padding(padding)
+    #     return None
 
-    def add_paddings(self):
-        """Add padding fields to properly align the composite to byte boundaries."""
-        new_fields = []
-        total_bits = 0
-        for field in self._fields:
-            if isinstance(field, Padding):
-                total_bits += field.padding
-            else:
-                # isinstance(field, Field)
-                if field.type in {"string", "rational"}:
-                    # add padding to next byte boundary
-                    padding = self.new_padding(total_bits)
-                    if padding is not None:
-                        new_fields.append(padding)
-                        total_bits += padding.padding
-                else:
-                    assert field.size is not None
-                    total_bits += field.size
-            new_fields.append(field)
-        # add final padding to byte boundary
-        padding = self.new_padding(total_bits)
-        if padding is not None:
-            new_fields.append(padding)
-        self._fields = new_fields
+    # def add_paddings(self):
+    #     """Add padding fields to properly align the composite to byte boundaries."""
+    #     new_fields = []
+    #     total_bits = 0
+    #     for field in self._fields:
+    #         if isinstance(field, Padding):
+    #             total_bits += field.padding
+    #         else:
+    #             # isinstance(field, Field)
+    #             if field.type in {"string", "rational"}:
+    #                 # add padding to next byte boundary
+    #                 padding = self.new_padding(total_bits)
+    #                 if padding is not None:
+    #                     new_fields.append(padding)
+    #                     total_bits += padding.padding
+    #             else:
+    #                 assert field.size is not None
+    #                 total_bits += field.size
+    #         new_fields.append(field)
+    #     # add final padding to byte boundary
+    #     padding = self.new_padding(total_bits)
+    #     if padding is not None:
+    #         new_fields.append(padding)
+    #     self._fields = new_fields
 
 
 class CompositePacker:
@@ -190,7 +189,7 @@ class CompositePacker:
                 self.add_padding(field.padding)
                 continue
             if field.name not in values:
-                raise ValueError(f"Missing value for field {field.name}")
+                raise ValueError(f"missing value for field {field.name}")
             self.pack_field(field, values[field.name])
         self.assert_buffer_empty()
         return self.bytestring

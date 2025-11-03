@@ -2,15 +2,20 @@
 
 from fractions import Fraction
 
-from .rationals import rational_size, rational_to_bytes, bytes_to_rational
-from .floats import double_to_bytes, bytes_to_double
+from .floats import bytes_to_double, double_to_bytes
+from .rationals import bytes_to_rational, rational_size, rational_to_bytes
 
+def assert_continuous_datatype(value_type: str):
+    """Assert that the given value type is a continuous datatype (rational or double)."""
+    continuous_datatypes = {"rational", "double"}
+    if value_type not in continuous_datatypes:
+        raise ValueError(f"expected value type one of {list(continuous_datatypes)} but is {value_type}")
 
 def interval_to_bytes(value: tuple[object, object], value_type: str, little_endian: bool = True) -> bytes:
     """Convert a tuple of two integers into a bytestring representing an interval."""
     assert len(value) == 2, "interval value must be a pair"
     base_value_type = value_type.replace("-interval", "")
-    assert base_value_type in {"rational", "double"}, f"unsupported base value type for interval: {base_value_type}"
+    assert_continuous_datatype(base_value_type)
     lower, upper = value
     if base_value_type == "rational":
         assert isinstance(lower, Fraction) and isinstance(upper, Fraction)
@@ -31,7 +36,7 @@ def bytes_to_interval(data: bytes, value_type: str, little_endian: bool = True) 
     assert len(data) % 2 == 0, "interval data must have even length"
     mid = len(data) // 2
     base_value_type = value_type.replace("-interval", "")
-    assert base_value_type in {"rational", "double"}, f"unsupported base value type for interval: {base_value_type}"
+    assert_continuous_datatype(base_value_type)
     lower, upper = data[:mid], data[mid:]
     converter = {
         "rational": bytes_to_rational,

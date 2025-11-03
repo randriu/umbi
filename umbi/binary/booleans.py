@@ -3,6 +3,7 @@ Utilities for (de)serializing booleans and bitvectors.
 """
 
 from typing import Optional
+
 from bitstring import BitArray
 
 

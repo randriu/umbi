@@ -132,7 +132,9 @@ class UmbReader(TarReader):
             name_applies_values[name] = self.read_annotation(label, name, annotation)
         return name_applies_values
 
-    def read_state_valuations(self, state_valuations: Optional[SimpleNamespace], num_states: int) -> Optional[list[dict]]:
+    def read_state_valuations(
+        self, state_valuations: Optional[SimpleNamespace], num_states: int
+    ) -> Optional[list[dict]]:
         if state_valuations is None:
             return None
         ranges = self.read_common(UmbFile.STATE_TO_VALUATION, required=False)
