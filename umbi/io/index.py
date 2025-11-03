@@ -233,7 +233,6 @@ class ValuationFieldSchema(OneOfSchema):
         return result
 
 
-
 class StateValuationsSchema(JsonSchema):
     alignment = FieldUint(data_key="alignment", required=True)
     variables = fields.List(fields.Nested(ValuationFieldSchema), data_key="variables", required=True)

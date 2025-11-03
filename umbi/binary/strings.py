@@ -2,7 +2,7 @@
 Utilities for (de)serializing strings.
 """
 
-from .integers import uint_to_bytes, bytes_to_uint
+from .integers import *
 from .utils import split_bytes
 
 
@@ -20,7 +20,7 @@ def string_pack(string: str) -> bytes:
     """Convert a utf-8 string to a uint16 length-prefixed byte string."""
     string_bytes = string_to_bytes(string)
     length = len(string_bytes)
-    prefix_bytes = uint_to_bytes(length, 2)
+    prefix_bytes = integer_to_bytes(length, num_bytes=2, signed=False)
     return prefix_bytes + string_bytes
 
 
@@ -32,7 +32,7 @@ def string_unpack(bytestring: bytes) -> tuple[str, bytes]:
     """
     prefix_size = 2  # size of uint16
     prefix, bytestring = split_bytes(bytestring, prefix_size)
-    length = bytes_to_uint(prefix)
+    length = bytes_to_integer(prefix, signed=False)
     string_bytes, remainder = split_bytes(bytestring, length)
     string = bytes_to_string(string_bytes)
     return string, remainder

@@ -13,6 +13,20 @@ from .composites import *
 from .integers import *
 
 
+def standard_value_type_size(value_type: str) -> int:
+    """Return the number of bytes needed to represent a value of the given type."""
+    if "-interval" in value_type:
+        base_value_type = value_type.replace("-interval", "")
+        return 2 * standard_value_type_size(base_value_type)
+    if value_type == "rational":
+        # for rationals, the standard size is 8+8 bytes
+        return standard_value_type_size("int64") + standard_value_type_size("uint64")
+    if value_type == "double":
+        return 8  # size of double
+    _, num_bytes = fixed_size_integer_base_and_size(value_type)
+    return num_bytes
+
+
 def bytes_into_chunk_ranges(data: bytes, chunk_ranges: list[tuple[int, int]]) -> list[bytes]:
     """Split bytestring into chunks according to chunk ranges."""
     return [data[start:end] for start, end in chunk_ranges]
