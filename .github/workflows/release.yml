@@ -1,33 +1,74 @@
 name: publish to PyPI
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "if set, publish to Test PyPI"
+        type: boolean
+        default: true
+  workflow_run:
+    workflows: ["bump version"]
+    types:
+      - completed
+  push:
+    tags:
+      - '*.*.*'
+
+permissions:
+  contents: write # for push
+  id-token: write # for OIDC
 
 jobs:
-  build-and-publish:
+  publish:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write  # Required for OIDC!
-      contents: read
-
+    if: >
+      ${{
+        (github.event_name == 'workflow_dispatch') ||  
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || 
+        (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'bump version'))
+      }}
     steps:
-      - uses: actions/checkout@v4
+      - name: (debug) print workflow trigger
+        run: |
+          echo "triggered by: ${{ github.event_name }}"
+          echo "workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "head commit message: ${{ github.event.head_commit.message }}"
+          echo "ref: ${{ github.ref }}"
+      
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: update stable branch pointer
+        run: |
+          git fetch origin
+          git branch -f stable HEAD
+          git push origin stable --force
+          echo "stable now points to: $(git rev-parse HEAD)"
+
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install build dependencies
+      - name: install build deps & build
         run: |
           python -m pip install --upgrade pip
           pip install build
+          python -m build
 
-      - name: Build package
-        run: python -m build
+      - name: show package info (dry run)
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "dry run mode - package built but not published"
+          ls -la dist/
+          
+      # - name: publish to Test PyPI (OIDC)
+      #   if: ${{ inputs.dry_run }}
+      #   uses: pypa/gh-action-pypi-publish@release/v1
+      #   with:
+      #     repository-url: https://test.pypi.org/legacy/
 
-      - name: Publish to PyPI
+      - name: publish to PyPI (OIDC)
+        if: ${{ !inputs.dry_run }}
         uses: pypa/gh-action-pypi-publish@release/v1
