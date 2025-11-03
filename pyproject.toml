@@ -28,7 +28,7 @@ dev = [
   "isort",
   "toml-sort",
   "twine",
-  "bumpver",
+  "bump-my-version",
 ]
 
 [tool.setuptools]
@@ -42,17 +42,13 @@ umbi = "umbi.__main__:main"
 format_version = 0
 format_revision = 1
 
-[tool.bumpver]
+[tool.bumpversion]
 current_version = "0.1.16"
-version_pattern = "MAJOR.MINOR.PATCH"
-commit_message = "bump version {old_version} -> {new_version}"
-tag_message = "v{new_version}"
-tag_scope = "default"
-pre_commit_hook = ""
-post_commit_hook = ""
 commit = true
 tag = true
-push = true
+tag_name = "v{new_version}"
+tag_message = "v{new_version}"
+message = "bump version {current_version} -> {new_version}"
 
-[tool.bumpver.file_patterns]
-"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"

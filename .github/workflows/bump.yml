@@ -25,10 +25,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: install bumpver
+      - name: install bump-my-version
         run: |
           python -m pip install --upgrade pip
-          pip install bumpver
+          pip install bump-my-version
 
       - name: configure git for pushing
         run: |
@@ -36,9 +36,13 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
 
-      - name: run bumpver
+      - name: run bump-my-version
         env:
           LEVEL: ${{ inputs.level || 'patch' }}
         run: |
-          echo "Bumping level: $LEVEL"
-          bumpver update --$LEVEL
+          echo "bumping level: $LEVEL"
+          bump-my-version bump $LEVEL
+
+      - name: push changes including tags
+        run: |
+          git push --tags
