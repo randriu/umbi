@@ -45,4 +45,5 @@ jobs:
 
       - name: push changes including tags
         run: |
-          git push --tags
+          git push origin main
+          git push origin --tags
