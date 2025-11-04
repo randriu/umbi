@@ -8,21 +8,27 @@ from .integers import *
 from .intervals import *
 from .rationals import *
 from .strings import *
+from .jsons import *
 
 
-def value_to_bytes(value: str | int | float | Fraction | tuple, value_type: str, little_endian: bool = True) -> bytes:
+
+
+def value_to_bytes(value: JsonLike | str | int | float | Fraction | Interval, value_type: str, little_endian: bool = True) -> bytes:
     """
     Convert a value of a given type to a bytestring.
-    :param value_type: either string or one of {int32|uint32|int64|uint64|double|rational}[-interval]
+    :param value_type: either json, string or one of {int32|uint32|int64|uint64|double|rational}[-interval]
     """
-    if value_type == "string":
+    if value_type == "json":
+        assert isinstance(value, JsonLike)
+        return json_to_bytes(value)
+    elif value_type == "string":
         assert isinstance(value, str)
         return string_to_bytes(value)  # no endianness for strings
     elif value_type == "rational":
         assert isinstance(value, Fraction)
         return rational_to_bytes(value, little_endian=little_endian)
     elif "-interval" in value_type:
-        assert isinstance(value, tuple) and len(value) == 2, "interval value must be a pair"
+        assert isinstance(value, Interval)
         return interval_to_bytes(value, value_type, little_endian)
     elif value_type == "double":
         assert isinstance(value, float)
@@ -32,13 +38,14 @@ def value_to_bytes(value: str | int | float | Fraction | tuple, value_type: str,
         return fixed_size_integer_to_bytes(value, value_type, little_endian)
 
 
-def bytes_to_value(data: bytes, value_type: str, little_endian: bool = True) -> str | int | float | Fraction | tuple:
+def bytes_to_value(data: bytes, value_type: str, little_endian: bool = True) -> JsonLike | str | int | float | Fraction | Interval:
     """
     Convert a binary string to a single value of the given type.
-    :param value_type: string or one of {int32|uint32|int64|uint64|double|rational}[-interval]
-    :return: a pair of left and right values for interval types, or a single value otherwise
+    :param value_type: json, string or one of {int32|uint32|int64|uint64|double|rational}[-interval]
     """
-    if value_type == "string":
+    if value_type == "json":
+        return bytes_to_json(data)
+    elif value_type == "string":
         return bytes_to_string(data)  # no endianness for strings
     elif value_type == "rational":
         return bytes_to_rational(data, little_endian)

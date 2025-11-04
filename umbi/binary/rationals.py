@@ -1,3 +1,7 @@
+"""
+Utilities for (de)serializing fractions.
+"""
+
 from fractions import Fraction
 from typing import Optional
 
@@ -10,14 +14,6 @@ def normalize_rational(value: Fraction) -> Fraction:
     if value.denominator < 0:
         value = Fraction(-value.numerator, -value.denominator)
     return value
-
-
-def integer_size(value: int) -> int:
-    """Return the number of bytes needed to represent an integer value, rounded up to the nearest multiple of 8."""
-    num_bytes = (value.bit_length() + 7) // 8
-    if num_bytes % 8 != 0:
-        num_bytes += 8 - (num_bytes % 8)
-    return num_bytes
 
 
 def rational_size(value: Fraction) -> int:

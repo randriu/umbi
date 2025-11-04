@@ -1,5 +1,5 @@
 """
-Utilities for (de)serialization of sequences of basic values (bytes).
+Utilities for (de)serializing sequences of primitive values.
 """
 
 import logging
@@ -30,6 +30,16 @@ def standard_value_type_size(value_type: str) -> int:
 def bytes_into_chunk_ranges(data: bytes, chunk_ranges: list[tuple[int, int]]) -> list[bytes]:
     """Split bytestring into chunks according to chunk ranges."""
     return [data[start:end] for start, end in chunk_ranges]
+
+
+def chunks_to_csr(chunks: list[bytes]) -> list[int]:
+    """Build csr for a list of chunks."""
+    current_pos = 0
+    csr = [current_pos]
+    for chunk in chunks:
+        current_pos += len(chunk)
+        csr.append(current_pos)
+    return csr
 
 
 def bytes_into_num_chunks(data: bytes, num_chunks: int) -> list[bytes]:
@@ -78,11 +88,11 @@ def bytes_to_vector(
 
 def vector_to_bytes(
     vector: list, value_type: str | CompositeType, little_endian: bool = True
-) -> tuple[bytes, Optional[list[tuple[int, int]]]]:
+) -> tuple[bytes, Optional[list[int]]]:
     """Encode a list of values as a binary string.
     :param value_type: vector element type, either composite, bool, string or {int32|uint32|int64|uint64|double|rational}[-interval]
     :return: encoded binary string
-    :return: (optional) chunk ranges if non-trivial splitting is needed to split the resulting bytestring into chunks, e.g. for strings or non-standard rationals
+    :return: (optional) chunk csr if non-trivial splitting is needed to split the resulting bytestring into chunks, e.g. for strings or non-standard rationals
     """
 
     if len(vector) == 0:
@@ -91,28 +101,18 @@ def vector_to_bytes(
 
     if isinstance(value_type, CompositeType):
         chunks = [composite_pack(value_type, item) for item in vector]
-        chunk_ranges = []
-        current_pos = 0
-        for chunk in chunks:
-            chunk_size = len(chunk)
-            chunk_ranges.append((current_pos, current_pos + chunk_size))
-            current_pos += chunk_size
+        chunks_csr = chunks_to_csr(chunks)
         bytestring = b"".join(chunks)
-        return bytestring, chunk_ranges
+        return bytestring, chunks_csr
 
     if value_type == "bool":
         assert little_endian, "big-endianness for bitvectors is not implemented"
         return (bitvector_to_bytes(vector), None)
 
     chunks = [value_to_bytes(item, value_type, little_endian) for item in vector]
-    chunk_ranges = None
+    chunks_csr = None
     if value_type == "string" or any(len(chunk) != standard_value_type_size(value_type) for chunk in chunks):
-        chunk_ranges = []
-        current_pos = 0
-        for chunk in chunks:
-            chunk_size = len(chunk)
-            chunk_ranges.append((current_pos, current_pos + chunk_size))
-            current_pos += chunk_size
+        chunks_csr = chunks_to_csr(chunks)
     bytestring = b"".join(chunks)
 
-    return bytestring, chunk_ranges
+    return bytestring, chunks_csr

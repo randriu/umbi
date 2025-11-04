@@ -1,18 +1,22 @@
 """
-umbi.binary: Utilities for (de)serialization of basic types.
+umbi.binary: Utilities for (de)serializing basic types.
 """
 
-# Import all functions from the split modules
 from .api import *
+from .jsons import *
 from .composites import *
 from .sequences import *
 
 __all__ = [
     "value_to_bytes",
     "bytes_to_value",
-    "Field",
-    "Padding",
+    "CompositeField",
+    "CompositePadding",
     "CompositeType",
     "bytes_to_vector",
     "vector_to_bytes",
+    "JsonLike",
+    "json_remove_none_dict_values",
+    "json_to_string",
+    "string_to_json",
 ]

@@ -1,0 +1,63 @@
+"""
+Main UMB index class and schema.
+"""
+
+from dataclasses import dataclass
+from typing import Optional, Type
+from marshmallow import fields, post_load
+
+from .json_schema import *
+from .model_data import ModelDataSchema, ModelData
+from .file_data import FileDataSchema, FileData
+from .annotations import AnnotationsSchema, Annotations
+from .transition_system import TransitionSystemSchema, TransitionSystem
+from .state_valuations import StateValuationsSchema, StateValuations
+
+import umbi.binary
+
+
+class UmbIndexSchema(JsonSchema):
+    """UMB index file schema."""
+
+    format_version = FieldUint(data_key="format-version", required=True)
+    format_revision = FieldUint(data_key="format-revision", required=True)
+    model_data = fields.Nested(ModelDataSchema, data_key="model-data", required=False)
+    file_data = fields.Nested(FileDataSchema, data_key="file-data", required=False)
+    transition_system = fields.Nested(TransitionSystemSchema, data_key="transition-system", required=True)
+    annotations = fields.Nested(AnnotationsSchema, data_key="annotations", required=False)
+    state_valuations = fields.Nested(StateValuationsSchema, data_key="state-valuations", required=False)
+
+    @post_load
+    def make_object(self, data: dict, **kwargs) -> "UmbIndex":
+        """Create an UmbIndex object from the deserialized data."""
+        obj = super().make_object(data, **kwargs)
+        return UmbIndex(
+            format_version=obj.format_version,
+            format_revision=obj.format_revision,
+            model_data=getattr(obj, "model_data", None),
+            file_data=getattr(obj, "file_data", None),
+            transition_system=obj.transition_system,
+            annotations=getattr(obj, "annotations", None),
+            state_valuations=getattr(obj, "state_valuations", None),
+        )
+
+
+@dataclass
+class UmbIndex(JsonSchemaResult):
+
+    format_version: int
+    format_revision: int
+    transition_system: TransitionSystem
+    model_data: Optional[ModelData] = None
+    file_data: Optional[FileData] = None
+    annotations: Optional[Annotations] = None
+    state_valuations: Optional[StateValuations] = None
+
+    @classmethod
+    def class_schema(cls) -> Type:
+        return UmbIndexSchema
+
+    def __str__(self) -> str:
+        """Convert to a string (json format)."""
+        return umbi.binary.json_to_string(self.to_json())
+
