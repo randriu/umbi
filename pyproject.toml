@@ -31,8 +31,11 @@ dev = [
   "bump-my-version",
 ]
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["umbi*"]
+
 [tool.setuptools]
-packages = ["umbi", "umbi.ats", "umbi.binary", "umbi.io", "umbi.vectors"]
 include-package-data = true
 
 [project.scripts]
