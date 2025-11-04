@@ -2,7 +2,7 @@
 Main UMB index class and schema.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Type
 from marshmallow import fields, post_load
 
@@ -45,11 +45,11 @@ class UmbIndexSchema(JsonSchema):
 @dataclass
 class UmbIndex(JsonSchemaResult):
 
-    format_version: int
-    format_revision: int
-    transition_system: TransitionSystem
+    format_version: int = 0
+    format_revision: int = 0
     model_data: Optional[ModelData] = None
     file_data: Optional[FileData] = None
+    transition_system: TransitionSystem = field(default_factory=TransitionSystem)
     annotations: Optional[Annotations] = None
     state_valuations: Optional[StateValuations] = None
 
