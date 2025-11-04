@@ -6,12 +6,11 @@ import json
 import logging
 
 logger = logging.getLogger(__name__)
-import typing
 
-import umbi
+from .strings import *
 
-"""A type alias for (high-level) JSON objects."""
-JsonLike = typing.Union[dict, list]
+JsonPrimitive = str | int | float | bool | None
+JsonLike = JsonPrimitive | dict | list # not using e.g. dict[str, 'JsonLike'] since we only use this for type hints
 
 
 def json_remove_none_dict_values(json_obj: JsonLike) -> JsonLike:
@@ -23,13 +22,11 @@ def json_remove_none_dict_values(json_obj: JsonLike) -> JsonLike:
     return json_obj
 
 
-def json_to_string(json_obj: JsonLike, remove_none: bool = False, indent: int | None = 4, **kwargs) -> str:
+def json_to_string(json_obj: JsonLike, indent: int | None = 4, **kwargs) -> str:
     """
     Encode a JSON object as a string.
     :raises: JSONEncodeError if the object is not serializable
     """
-    if remove_none:
-        json_obj = json_remove_none_dict_values(json_obj)
     return json.dumps(json_obj, indent=indent, **kwargs)
 
 
@@ -43,9 +40,9 @@ def string_to_json(json_str: str) -> JsonLike:
 
 def bytes_to_json(data: bytes) -> JsonLike:
     """Convert bytes to a JSON object."""
-    return string_to_json(umbi.binary.bytes_to_string(data))
+    return string_to_json(bytes_to_string(data))
 
 
 def json_to_bytes(json_obj: JsonLike) -> bytes:
     """Convert a JSON object to bytes."""
-    return umbi.binary.string_to_bytes(json_to_string(json_obj))
+    return string_to_bytes(json_to_string(json_obj))

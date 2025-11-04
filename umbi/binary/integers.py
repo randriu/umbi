@@ -1,8 +1,16 @@
 """
-Utilities for (de)serializing integers and floats.
+Utilities for (de)serializing integers.
 """
 
 from bitstring import BitArray
+
+
+def integer_size(value: int) -> int:
+    """Return the number of bytes needed to represent an integer value, rounded up to the nearest multiple of 8."""
+    num_bytes = (value.bit_length() + 7) // 8
+    if num_bytes % 8 != 0:
+        num_bytes += 8 - (num_bytes % 8)
+    return num_bytes
 
 
 def assert_integer_range(value: int, num_bits: int, signed: bool = True):

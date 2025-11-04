@@ -13,13 +13,13 @@ from .utils import split_bytes
 
 
 @dataclass(frozen=False)
-class Padding:
+class CompositePadding:
     """A simple range datatype representing [start, end)."""
 
     padding: int
 
     @classmethod
-    def from_namespace(cls, data: SimpleNamespace) -> "Padding":
+    def from_namespace(cls, data: SimpleNamespace) -> "CompositePadding":
         return cls(padding=data.padding)
 
     def validate(self):
@@ -28,7 +28,7 @@ class Padding:
 
 
 @dataclass(frozen=False)
-class Field:
+class CompositeField:
     """A field in a composite datatype."""
 
     name: str
@@ -39,7 +39,7 @@ class Field:
     offset: Optional[float] = None  # lower value offset (for numeric types)
 
     @classmethod
-    def from_namespace(cls, data: SimpleNamespace) -> "Field":
+    def from_namespace(cls, data: SimpleNamespace) -> "CompositeField":
         return cls(
             name=data.name,
             type=data.type,
@@ -65,7 +65,7 @@ class Field:
 class CompositeType:
     """A composite datatype consisting of fields and paddings."""
 
-    def __init__(self, fields: list[Field | Padding] = []):
+    def __init__(self, fields: list[CompositeField | CompositePadding] = []):
         self._fields = fields
 
     @classmethod
@@ -73,9 +73,9 @@ class CompositeType:
         fields = []
         for item in data:
             if hasattr(item, "padding"):
-                fields.append(Padding.from_namespace(item))
+                fields.append(CompositePadding.from_namespace(item))
             else:
-                fields.append(Field.from_namespace(item))
+                fields.append(CompositeField.from_namespace(item))
         return cls(fields)
 
     def __iter__(self):
@@ -87,7 +87,7 @@ class CompositeType:
     def __len__(self):
         return len(self._fields)
 
-    def append(self, field: Field | Padding):
+    def append(self, field: CompositeField | CompositePadding):
         self._fields.append(field)
 
     @property
@@ -98,39 +98,6 @@ class CompositeType:
         for item in self._fields:
             item.validate()
         #TODO check alignment
-
-    # @staticmethod
-    # def new_padding(total_bits: int) -> Padding | None:
-    #     """Create a new padding field to align the total_bits to the next byte boundary."""
-    #     padding = (8 - total_bits % 8) % 8
-    #     if padding > 0:
-    #         return Padding(padding)
-    #     return None
-
-    # def add_paddings(self):
-    #     """Add padding fields to properly align the composite to byte boundaries."""
-    #     new_fields = []
-    #     total_bits = 0
-    #     for field in self._fields:
-    #         if isinstance(field, Padding):
-    #             total_bits += field.padding
-    #         else:
-    #             # isinstance(field, Field)
-    #             if field.type in {"string", "rational"}:
-    #                 # add padding to next byte boundary
-    #                 padding = self.new_padding(total_bits)
-    #                 if padding is not None:
-    #                     new_fields.append(padding)
-    #                     total_bits += padding.padding
-    #             else:
-    #                 assert field.size is not None
-    #                 total_bits += field.size
-    #         new_fields.append(field)
-    #     # add final padding to byte boundary
-    #     padding = self.new_padding(total_bits)
-    #     if padding is not None:
-    #         new_fields.append(padding)
-    #     self._fields = new_fields
 
 
 class CompositePacker:
@@ -161,7 +128,7 @@ class CompositePacker:
         assert num_bits > 0
         self.append_to_buffer(BitArray(uint=0, length=num_bits))
 
-    def pack_field(self, field: Field, value: object):
+    def pack_field(self, field: CompositeField, value: object):
         """Pack a single field into the buffer or the bytestring."""
         if field.type in ["string", "rational"]:
             self.assert_buffer_empty()
@@ -185,7 +152,7 @@ class CompositePacker:
 
     def pack_fields(self, value_type: CompositeType, values: dict[str, object]) -> bytes:
         for field in value_type:
-            if isinstance(field, Padding):
+            if isinstance(field, CompositePadding):
                 self.add_padding(field.padding)
                 continue
             if field.name not in values:
@@ -227,7 +194,7 @@ class CompositeUnpacker:
     def skip_padding(self, num_bits: int):
         self.extract_from_buffer(num_bits)
 
-    def unpack_field(self, field: Field) -> object:
+    def unpack_field(self, field: CompositeField) -> object:
         """Unpack a single field from the buffer or the bytestring."""
         if field.type in ["string", "rational"]:
             self.assert_buffer_empty()
@@ -248,7 +215,7 @@ class CompositeUnpacker:
     def unpack_fields(self, value_type: CompositeType) -> dict[str, object]:
         values = dict()
         for field in value_type:
-            if isinstance(field, Padding):
+            if isinstance(field, CompositePadding):
                 self.skip_padding(field.padding)
                 continue
             values[field.name] = self.unpack_field(field)

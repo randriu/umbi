@@ -2,7 +2,11 @@ import os
 import tomllib
 
 from . import binary, io, vectors
+from . import ats
 from .logger import set_log_level, setup_logging
+
+# For backward compatibility, make index accessible as umbi.index
+from .io import index
 
 
 def get_pyproject_attribute(attribute, default, section="project"):

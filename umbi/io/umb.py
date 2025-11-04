@@ -3,6 +3,7 @@ Utilities for reading and writing umbfiles.
 """
 
 import logging
+from time import time
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -12,9 +13,9 @@ from types import SimpleNamespace
 
 import umbi
 import umbi.binary
+import umbi.vectors
 
-from .index import UmbIndex
-from .jsons import JsonLike
+from . import index
 from .tar import TarReader, TarWriter
 
 
@@ -48,7 +49,7 @@ class ExplicitUmb:
     """Class for an explicit representation of a umbfile. The goal of this class is to have all the data is stored in numpy arrays and lists."""
 
     def __init__(self):
-        self.index: UmbIndex = UmbIndex()
+        self.index = None
 
         self.initial_states = None
         self.state_to_choice = None
@@ -98,6 +99,13 @@ class UmbReader(TarReader):
         filename_csr, _ = file_csr.value
         return self.read_filetype_csr(filename, value_type, required, filename_csr, required_csr)
 
+    def read_index(self, file: UmbFile) -> index.UmbIndex:
+        json_obj = self.read_common(file, required=True)
+        assert isinstance(json_obj, umbi.binary.JsonLike)
+        idx = index.UmbIndex.from_json(json_obj)
+        idx.validate()
+        return idx
+
     def read_annotation(self, label: str, name: str, annotation: SimpleNamespace) -> dict[str, list]:
         """
         Read annotation files for a single annotation.
@@ -137,24 +145,22 @@ class UmbReader(TarReader):
     ) -> Optional[list[dict]]:
         if state_valuations is None:
             return None
-        ranges = self.read_common(UmbFile.STATE_TO_VALUATION, required=False)
-        if ranges is None:
-            ranges = [(s, s + 1) for s in range(num_states)]
-        assert isinstance(ranges, (list, type(tuple([int, int]))))
+        chunks_csr = self.read_common(UmbFile.STATE_TO_VALUATION, required=False)
+        if chunks_csr is None:
+            chunks_csr = [s for s in range(num_states+1)]
         a = state_valuations.alignment
-        ranges = [(x * a, y * a) for (x, y) in ranges]
+        chunks_csr = [x*a for x in chunks_csr]
         valuations = self.read_common(UmbFile.STATE_VALUATIONS, required=True)
         assert isinstance(valuations, bytes)
         value_type = umbi.binary.CompositeType.from_namespace(state_valuations.variables)
+        ranges = umbi.vectors.csr_to_ranges(chunks_csr)
         return umbi.binary.bytes_to_vector(valuations, value_type, ranges)
 
     def read_umb(self):  # type: ignore
         logger.info(f"loading umbfile from {self.tarpath} ...")
         umb = ExplicitUmb()
 
-        json_obj = self.read_common(UmbFile.INDEX_JSON, required=True)
-        assert isinstance(json_obj, JsonLike)
-        umb.index = UmbIndex.from_json(json_obj)
+        umb.index = self.read_index(UmbFile.INDEX_JSON)
 
         umb.initial_states = self.read_common(UmbFile.INITIAL_STATES, required=True)
         umb.state_to_choice = self.read_common(UmbFile.STATE_TO_CHOICE)
@@ -204,6 +210,11 @@ class UmbWriter(TarWriter):
         filename_csr, _ = file_csr.value
         self.add_filetype_csr(filename, value_type, data, required, filename_csr)
 
+    def add_index(self, file: UmbFile, idx: index.UmbIndex):
+        idx.validate()
+        json_obj = idx.to_json()
+        self.add_common(file, json_obj, required=True)
+
     def add_annotation(self, label: str, name: str, annotation_info: SimpleNamespace, applies_values: dict[str, list]):
         """
         Add files for an annotation.
@@ -246,7 +257,8 @@ class UmbWriter(TarWriter):
 
     def write_umb(self, umb: ExplicitUmb, umbpath: str):
         logger.info(f"writing umbfile to {umbpath} ...")
-        self.add_common(UmbFile.INDEX_JSON, umb.index.to_json(), required=True)
+        self.add_index(UmbFile.INDEX_JSON, umb.index)
+
         self.add_common(UmbFile.INITIAL_STATES, umb.initial_states, required=True)
         self.add_common(UmbFile.STATE_TO_CHOICE, umb.state_to_choice)
         self.add_common(UmbFile.STATE_TO_PLAYER, umb.state_to_player)

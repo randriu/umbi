@@ -1,14 +1,20 @@
+"""
+Utilities for (de)serializing floats (doubles).
+"""
+
 import struct
 
 from bitstring import BitArray
 
 
 def double_to_bytes(value: float, little_endian: bool = True) -> bytes:
+    """Convert a single double value to a bytestring."""
     ef = "<" if little_endian else ">"
     return struct.pack(f"{ef}d", value)
 
 
 def bytes_to_double(data: bytes, little_endian: bool = True) -> float:
+    """Convert a bytestring to a single double value."""
     ef = "<" if little_endian else ">"
     return struct.unpack(f"{ef}d", data)[0]
 

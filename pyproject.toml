@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "umbi"
 version = "0.1.17"
-description = "Library for binary encoding of annotated transition systems"
+description = "Library for input/output of transition systems in a unified Markov binary (UMB) format."
 readme = "README.md"
 authors = [{name = "Roman Andriushchenko", email = "roman.andriu@gmail.com"}]
 license = {file = "LICENSE"}
@@ -32,7 +32,7 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["umbi", "umbi.binary", "umbi.io", "umbi.vectors"]
+packages = ["umbi", "umbi.ats", "umbi.binary", "umbi.io", "umbi.vectors"]
 include-package-data = true
 
 [project.scripts]

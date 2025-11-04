@@ -11,8 +11,6 @@ import tarfile
 import umbi.binary
 import umbi.vectors
 
-from .jsons import JsonLike, bytes_to_json, json_to_bytes
-
 
 def is_of_vector_type(filetype: str) -> bool:
     return filetype.startswith("vector[") and filetype.endswith("]")
@@ -79,9 +77,9 @@ class TarReader:
         if filetype == "bytes":
             return data
         if filetype == "json":
-            return bytes_to_json(data)
+            return umbi.binary.bytes_to_value(data, "json")
         if filetype == "csr":
-            return umbi.vectors.csr_to_ranges(umbi.binary.bytes_to_vector(data, "uint64"))
+            return umbi.binary.bytes_to_vector(data, "uint64")
         if is_of_vector_type(filetype):
             value_type = value_type_of(filetype)
             return umbi.binary.bytes_to_vector(data, value_type)
@@ -103,11 +101,13 @@ class TarReader:
         if data is None:
             return None
         chunk_ranges = self.read_filetype(filename_csr, "csr", required=required_csr)
-        assert isinstance(chunk_ranges, list) or chunk_ranges is None
+        if chunk_ranges is not None:
+            assert isinstance(chunk_ranges, list)
+            chunk_ranges = umbi.vectors.csr_to_ranges(chunk_ranges)
         return umbi.binary.bytes_to_vector(data, value_type, chunk_ranges=chunk_ranges)
 
 
-class TarWriter:  #
+class TarWriter:
     """An auxiliary class to simplify tar writing."""
 
     @classmethod
@@ -138,7 +138,7 @@ class TarWriter:  #
         """Add a (binary) file to the tarball."""
         logger.debug(f"writing {filename} ...")
         if filename in self.filename_data:
-            logger.warning(f"file {filename} already exists in the tarball")
+            logger.warning(f"file {filename} already exists in the tarball, overwriting")
         self.filename_data[filename] = data
 
     def add_filetype(self, filename: str, filetype: str, data, required: bool = False):
@@ -150,14 +150,14 @@ class TarWriter:  #
         if filetype == "bytes":
             data_out = data
         elif filetype == "json":
-            data_out = json_to_bytes(data)
+            data_out = umbi.binary.value_to_bytes(data,"json")
         elif filetype == "csr":
-            data_out, chunk_ranges = umbi.binary.vector_to_bytes(umbi.vectors.ranges_to_csr(data), "uint64")
-            assert chunk_ranges is None, "unexpected chunk ranges"
+            data_out, chunk_csr = umbi.binary.vector_to_bytes(data, "uint64")
+            assert chunk_csr is None, "unexpected chunk csr"
         elif is_of_vector_type(filetype):
             value_type = value_type_of(filetype)
-            data_out, chunk_ranges = umbi.binary.vector_to_bytes(data, value_type)
-            assert chunk_ranges is None, "exporting the vector requires the CSR file, but no such file was specified"
+            data_out, chunk_csr = umbi.binary.vector_to_bytes(data, value_type)
+            assert chunk_csr is None, "exporting the vector requires the CSR file, but no such file was specified"
         else:
             raise ValueError(f"unrecognized file type {filetype} for file {filename}")
         assert data_out is not None, "data is not None, but data_out is None"
@@ -169,10 +169,10 @@ class TarWriter:  #
             if required:
                 raise ValueError(f"missing required data for {filename}")
             return
-        data_out, chunk_ranges = umbi.binary.vector_to_bytes(data, value_type)
+        data_out, chunk_csr = umbi.binary.vector_to_bytes(data, value_type)
         self.add_file(filename, data_out)
-        if chunk_ranges is not None:
-            self.add_filetype(filename_csr, "csr", chunk_ranges, required=True)
+        if chunk_csr is not None:
+            self.add_filetype(filename_csr, "csr", chunk_csr, required=True)
         else:
             logger.debug(f"skipping CSR file {filename_csr}")
 

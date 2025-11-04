@@ -1,4 +1,4 @@
-"""Utility functions for binary operations."""
+"""Utility functions for byte-level operations."""
 
 
 def split_bytes(bytestring: bytes, length: int) -> tuple[bytes, bytes]:
