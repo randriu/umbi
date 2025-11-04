@@ -2,11 +2,10 @@
 ATS (Abstract Transition System) package.
 """
 
-from .ats import AtsIndex, Ats, read_ats, write_ats
+from .ats import *
 
 __all__ = [
-    "AtsIndex",
-    "Ats",
+    "ExplicitAts",
     "read_ats",
     "write_ats",
 ]

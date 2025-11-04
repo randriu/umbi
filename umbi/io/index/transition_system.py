@@ -3,7 +3,7 @@ Transition system schemas and classes.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Type
+from typing import Literal, Optional, Type
 from marshmallow import fields, validate, post_load
 
 from .json_schema import *
@@ -55,16 +55,16 @@ class TransitionSystemSchema(JsonSchema):
 @dataclass
 class TransitionSystem(JsonSchemaResult):
     """Transition system data class."""
-    time: str
-    num_players: int
-    num_states: int
-    num_initial_states: int
-    num_choices: int
-    num_actions: int
-    num_branches: int
+    time: Literal["discrete", "stochastic", "urgent-stochastic"] = "discrete"
+    num_players: int = 0
+    num_states: int = 0
+    num_initial_states: int = 0
+    num_choices: int = 0
+    num_actions: int = 0
+    num_branches: int = 0
     num_observations: Optional[int] = None
-    branch_probability_type: Optional[str] = None
-    exit_rate_type: Optional[str] = None
+    branch_probability_type: Optional[Literal["double", "rational", "double-interval", "rational-interval"]] = None
+    exit_rate_type: Optional[Literal["double", "rational", "double-interval", "rational-interval"]] = None
 
     @classmethod
     def class_schema(cls) -> Type:
