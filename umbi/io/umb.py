@@ -153,10 +153,10 @@ class UmbReader(TarReader):
         chunks_csr = self.read_common(UmbFile.STATE_TO_VALUATION, required=False)
         if chunks_csr is None:
             chunks_csr = [s for s in range(num_states+1)]
-        a = state_valuations.alignment
-        chunks_csr = [x*a for x in chunks_csr]
+        chunks_csr = [x*state_valuations.alignment for x in chunks_csr]
         valuations = self.read_common(UmbFile.STATE_VALUATIONS, required=True)
         assert isinstance(valuations, bytes)
+        # assert len(valuations) == (chunks_csr[-1]), "state valuations data length does not match expected size"
         value_type = umbi.binary.CompositeType.from_namespace(state_valuations.variables)
         ranges = umbi.vectors.csr_to_ranges(chunks_csr)
         return umbi.binary.bytes_to_vector(valuations, value_type, ranges)
@@ -257,9 +257,9 @@ class UmbWriter(TarWriter):
         assert state_valuations is not None
         value_type = umbi.binary.CompositeType.from_namespace(state_valuations_index.variables)
         bytestring, ranges = umbi.binary.vector_to_bytes(state_valuations, value_type)
-        self.add_common(UmbFile.STATE_VALUATIONS, bytestring)
         assert ranges is not None
-        state_valuations_index.alignment = 1  # TODO compute nontrivial alignment
+        self.add_common(UmbFile.STATE_VALUATIONS, bytestring)
+        ranges = [x//state_valuations_index.alignment for x in ranges]
         self.add_common(UmbFile.STATE_TO_VALUATION, ranges)
 
     def write_umb(self, umb: ExplicitUmb, umbpath: str):

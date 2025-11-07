@@ -56,12 +56,12 @@ class TarReader:
 
     def read_file(self, filename: str, required: bool = False) -> bytes | None:
         """Read raw bytes from a specific file in the tarball"""
-        logger.debug(f"loading {filename} ...")
         if filename not in self.filenames:
             if not required:
                 return None
             else:
                 raise KeyError(f"tar archive {self.tarpath} has no file {filename}")
+        logger.debug(f"loading {filename}")
         return self.filename_data[filename]
 
     def read_filetype(self, filename: str, filetype: str, required: bool = False):

@@ -14,7 +14,7 @@ from .utils import split_bytes
 
 @dataclass(frozen=False)
 class CompositePadding:
-    """A simple range datatype representing [start, end)."""
+    """Padding bits in a composite datatype."""
 
     padding: int
 

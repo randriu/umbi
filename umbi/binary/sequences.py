@@ -29,6 +29,7 @@ def standard_value_type_size(value_type: str) -> int:
 
 def bytes_into_chunk_ranges(data: bytes, chunk_ranges: list[tuple[int, int]]) -> list[bytes]:
     """Split bytestring into chunks according to chunk ranges."""
+    assert len(data) == chunk_ranges[-1][1], "data length does not match the end of the last chunk range"
     return [data[start:end] for start, end in chunk_ranges]
 
 

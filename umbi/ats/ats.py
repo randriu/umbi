@@ -66,6 +66,10 @@ class ExplicitAts:
             return False
         return True
 
+    @property
+    def has_state_valuations(self) -> bool:
+        return self.state_valuations is not None
+
     def validate(self):
         # TODO implement
         assert self.num_states > 0
@@ -73,8 +77,12 @@ class ExplicitAts:
         assert self.state_to_choice is None or len(self.state_to_choice) == self.num_states+1
         assert self.choice_to_branch is None or len(self.choice_to_branch) == self.num_choices+1
         assert self.branch_to_target is None or len(self.branch_to_target) == self.num_branches
-        if self.num_players > 0:
-            assert self.state_to_player is not None and len(self.state_to_player) == self.num_states
+        if self.num_players > 1:
+            assert self.state_to_player is not None
+            assert len(self.state_to_player) == self.num_states
+        if self.has_state_valuations:
+            assert self.state_valuations_values is not None
+            assert len(self.state_valuations_values) == self.num_states
 
 
 class ExplicitAtsConverter:

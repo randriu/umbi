@@ -135,3 +135,9 @@ class StateValuations(JsonSchemaResult):
     @classmethod
     def class_schema(cls) -> Type:
         return StateValuationsSchema
+
+    def __str__(self) -> str:
+        lines = [f"state valuations (alignment={self.alignment}):"]
+        for var in self.variables:
+            lines.append(f"  {var}")
+        return "\n".join(lines)
