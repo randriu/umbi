@@ -11,7 +11,12 @@ from .strings import *
 from .jsons import *
 
 
-
+def is_integer_value_type(value_type : str) -> bool:
+    """
+    Checks if the value typs is one of the umb integer types.
+    :param value_type: The string description of the value type.
+    """
+    return value_type in ["int", "uint", "int32", "int64", "uint32", "uint64"]
 
 def value_to_bytes(value: JsonLike | str | int | float | Fraction | Interval, value_type: str, little_endian: bool = True) -> bytes:
     """
@@ -31,9 +36,12 @@ def value_to_bytes(value: JsonLike | str | int | float | Fraction | Interval, va
         assert isinstance(value, Interval)
         return interval_to_bytes(value, value_type, little_endian)
     elif value_type == "double":
-        assert isinstance(value, float)
+        if isinstance(value, int):
+            return double_to_bytes(float(value), little_endian=little_endian)
+        assert isinstance(value, float), type(value)
         return double_to_bytes(value, little_endian)
     else:
+        assert is_integer_value_type(value_type)
         assert isinstance(value, int)
         return fixed_size_integer_to_bytes(value, value_type, little_endian)
 
@@ -54,6 +62,7 @@ def bytes_to_value(data: bytes, value_type: str, little_endian: bool = True) -> 
     elif value_type == "double":
         return bytes_to_double(data, little_endian)
     else:
+        assert is_integer_value_type(value_type)
         return bytes_to_fixed_size_integer(data, value_type, little_endian)
 
 
