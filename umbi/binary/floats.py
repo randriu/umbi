@@ -1,5 +1,5 @@
 """
-Utilities for (de)serializing floats (doubles).
+Utilities for (de)serializing doubles.
 """
 
 import struct

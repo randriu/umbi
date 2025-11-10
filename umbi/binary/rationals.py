@@ -9,6 +9,9 @@ from .integers import *
 from .utils import split_bytes
 
 
+# Convention: a normalized rational has a non-negative denominator.
+# Rationals are represented as two integers of equal lengths: a signed numerator and an unsigned denominator.
+
 def normalize_rational(value: Fraction) -> Fraction:
     """Ensure that the denominator of a fraction is non-negative."""
     if value.denominator < 0:
@@ -16,9 +19,19 @@ def normalize_rational(value: Fraction) -> Fraction:
     return value
 
 
-def rational_size(value: Fraction) -> int:
-    """Return the number of bytes needed to represent a fraction."""
-    return max(integer_size(value.numerator), integer_size(value.denominator))
+def num_bits_for_rational(value: Fraction) -> int:
+    """Calculate the number of bits needed to represent a rational number."""
+    numerator_size = num_bits_for_integer(value.numerator, signed=True, round_up=False)
+    denominator_size = num_bits_for_integer(value.denominator, signed=False, round_up=False)
+    total_size = max(numerator_size, denominator_size) * 2
+    return total_size
+
+def num_bytes_for_rational(value: Fraction) -> int:
+    """Calculate the number of bytes needed to represent a rational number."""
+    # rounding up to a number of bytes of multiple of 8
+    numerator_size = num_bytes_for_integer(value.numerator, signed=True, round_up=True)
+    denominator_size = num_bytes_for_integer(value.denominator, signed=False, round_up=True)
+    return max(numerator_size, denominator_size) * 2
 
 
 def rational_to_bytes(value: Fraction, term_size: Optional[int] = None, little_endian: bool = True) -> bytes:
@@ -27,7 +40,7 @@ def rational_to_bytes(value: Fraction, term_size: Optional[int] = None, little_e
     :param term_size: (optional) maximum size in bytes for numerator/denominator; if not provided, the size is determined automatically
     """
     value = normalize_rational(value)
-    minimal_term_size = rational_size(value) // 2
+    minimal_term_size = num_bytes_for_rational(value) // 2
     if term_size is None:
         term_size = minimal_term_size
     elif term_size < minimal_term_size:

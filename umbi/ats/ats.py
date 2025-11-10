@@ -5,6 +5,7 @@ from typing import Optional, Literal
 import umbi.io
 import umbi.io.index as index
 import umbi.version
+import umbi.datatypes
 
 #TODO import Numeric from umbi.binary?
 
@@ -51,7 +52,7 @@ class ExplicitAts:
     aps: Optional[dict[str, index.Annotation]] = None
     aps_values: Optional[dict[str, dict[str, list]]] = None
 
-    state_valuations: Optional[index.StateValuations] = None
+    state_valuations: Optional[umbi.datatypes.StructType] = None
     state_valuations_values: Optional[list[dict]] = None
 
     def __eq__(self, other):

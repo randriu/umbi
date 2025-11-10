@@ -2,36 +2,6 @@
 Auxiliary vector operations.
 """
 
-# from dataclasses import dataclass
-
-# @dataclass(frozen=False)
-# class Range:
-#     """A simple range datatype representing [start, end)."""
-#     start: int
-#     end: int
-
-#     def __post_init__(self):
-#         self.validate()
-
-#     def validate(self):
-#         if self.start > self.end:
-#             raise ValueError(f"Range start ({self.start}) must be <= end ({self.end})")
-
-#     def length(self) -> int:
-#         """Return the length of the range."""
-#         return self.end - self.start
-
-#     def to_tuple(self) -> tuple[int, int]:
-#         """Convert to tuple for compatibility with existing code."""
-#         return (self.start, self.end)
-
-#     @staticmethod
-#     def from_tuple(t: tuple[int, int]) -> 'Range':
-#         """Create a Range from a tuple."""
-#         if len(t) != 2:
-#             raise ValueError("Tuple must have exactly two elements")
-#         return Range(t[0], t[1])
-
 
 def is_vector_ranges(ranges: list[tuple[int, int]]) -> bool:
     """Check if a vector is a list of ranges."""
