@@ -31,9 +31,6 @@ __all__ = [
 	"assert_interval_type",
 	"interval_base_type",
 
-	"VectorType",
-    "CSR_TYPE",
-
 	# interval.py
 	"Interval",
 
@@ -43,6 +40,8 @@ __all__ = [
 	"StructType",
 
 	# csr.py
+	"VectorType",
+    "CSR_TYPE",
 	"is_vector_ranges",
 	"is_vector_csr",
 	"csr_to_ranges",

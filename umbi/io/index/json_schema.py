@@ -62,8 +62,7 @@ class JsonSchema(Schema):
         except ValidationError as e:
             logger.error(f"{cls} validation error:")
             # messages is actually a json object, so we can pretty print it
-            # print(umbi.binary.json_to_string(e.messages))
-            logger.error(umbi.datatypes.json_to_string(e.messages))
+            logger.error(umbi.datatypes.json_to_string(e.messages)) #type: ignore
             raise e
 
 @dataclass

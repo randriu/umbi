@@ -2,6 +2,15 @@
 Auxiliary vector operations.
 """
 
+from dataclasses import dataclass
+from .common_type import CommonType
+
+@dataclass
+class VectorType:
+    base_type: CommonType
+
+CSR_TYPE = VectorType(CommonType.UINT64)
+
 
 def is_vector_ranges(ranges: list[tuple[int, int]]) -> bool:
     """Check if a vector is a list of ranges."""

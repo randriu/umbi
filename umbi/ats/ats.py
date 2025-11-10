@@ -6,54 +6,53 @@ import umbi.io
 import umbi.io.index as index
 import umbi.version
 import umbi.datatypes
-
-#TODO import Numeric from umbi.binary?
+from umbi.datatypes import CommonType, Numeric, Interval
 
 @dataclass
 class ExplicitAts:
     """Explicit container for an annotated transition system (ATS)."""
 
     #TODO use local ModelData class?
-    model_data: Optional[index.ModelData] = None
+    model_data: index.ModelData | None = None
 
-    time: Literal["discrete", "stochastic", "urgent-stochastic"] = "discrete"
+    time: Literal["discrete", "stochastic", "urgent-stochastic"] = "discrete" #TODO enum
     num_states: int = 0
 
     num_players: int = 0
-    state_to_player: Optional[list[int]] = None
+    state_to_player: list[int] | None = None
 
     num_initial_states: int = 0
     initial_states: list[int] = field(default_factory=list)
 
-    num_observations: Optional[int] = None
+    num_observations: int | None = None
     #TODO other POMDP stuff
 
     num_choices: int = 0
-    state_to_choice: Optional[list[int]] = None
+    state_to_choice: list[int] | None = None
 
-    markovian_states: Optional[list[int]] = None
-    exit_rate_type: Optional[Literal["double", "rational", "double-interval", "rational-interval"]] = None
-    state_exit_rate: Optional[list] = None #TODO use Numeric
+    markovian_states: list[int] | None = None
+    exit_rate_type: CommonType | None = None
+    state_exit_rate: list[Numeric | Interval] | None = None
 
-    num_actions: int = 0
-    choice_to_action: Optional[list[int]] = None
-    action_strings: Optional[list[str]] = None
+    num_actions: int = 1
+    choice_to_action: list[int] | None = None
+    action_strings: list[str] | None = None
 
     num_branches: int = 0
-    choice_to_branch: Optional[list[int]] = None
-    branch_to_target: Optional[list[int]] = None
-    branch_probability_type: Optional[Literal["double", "rational", "double-interval", "rational-interval"]] = None
-    branch_probabilities: Optional[list] = None #TODO use Numeric
+    choice_to_branch: list[int] | None = None
+    branch_to_target: list[int] | None = None
+    branch_probability_type: CommonType | None = None
+    branch_probabilities: list[Numeric | Interval] | None = None
 
     #TODO consolidate each into one structure
-    rewards: Optional[dict[str, index.Annotation]] = None
-    rewards_values: Optional[dict[str, dict[str, list]]] = None
+    rewards: dict[str, index.Annotation] | None = None
+    rewards_values: dict[str, dict[str, list]] | None = None
 
-    aps: Optional[dict[str, index.Annotation]] = None
-    aps_values: Optional[dict[str, dict[str, list]]] = None
+    aps: dict[str, index.Annotation] | None = None
+    aps_values: dict[str, dict[str, list]] | None = None
 
-    state_valuations: Optional[umbi.datatypes.StructType] = None
-    state_valuations_values: Optional[list[dict]] = None
+    state_valuations: umbi.datatypes.StructType | None = None
+    state_valuations_values: list[dict] | None = None
 
     def __eq__(self, other):
         #TODO implement
@@ -73,17 +72,47 @@ class ExplicitAts:
 
     def validate(self):
         # TODO implement
-        assert self.num_states > 0
-        assert self.num_initial_states == sum(self.initial_states)
-        assert self.state_to_choice is None or len(self.state_to_choice) == self.num_states+1
-        assert self.choice_to_branch is None or len(self.choice_to_branch) == self.num_choices+1
-        assert self.branch_to_target is None or len(self.branch_to_target) == self.num_branches
+
+        NUMERIC_DATATYPES = [
+            CommonType.DOUBLE, CommonType.RATIONAL,
+            CommonType.DOUBLE_INTERVAL, CommonType.RATIONAL_INTERVAL
+        ]
+
+        if self.time not in ["discrete", "stochastic", "urgent-stochastic"]:
+            raise ValueError(f"invalid time type {self.time}")
+
+        if not self.num_states > 0:
+            raise ValueError("expected num_states > 0")
+
         if self.num_players > 1:
-            assert self.state_to_player is not None
-            assert len(self.state_to_player) == self.num_states
+            if self.state_to_player is None:
+                raise ValueError("num_players > 1 but state_to_player is None")
+            if len(self.state_to_player) != self.num_states:
+                raise ValueError("expected len(state_to_player) == num_states")
+
+        if self.num_initial_states != sum(self.initial_states):
+            raise ValueError("expected num_initial_states == sum(initial_states)")
+
+        if self.exit_rate_type is not None:
+            if self.exit_rate_type not in NUMERIC_DATATYPES:
+                raise ValueError(f"invalid exit rate type {self.exit_rate_type}")
+        if self.branch_probability_type is not None:
+            if self.branch_probability_type not in NUMERIC_DATATYPES:
+                raise ValueError(f"invalid branch probability type {self.branch_probability_type}")
+        if self.state_to_choice is not None:
+            if len(self.state_to_choice) != self.num_states+1:
+                raise ValueError("expected len(state_to_choice) == num_states+1")
+        if self.choice_to_branch is not None:
+            if len(self.choice_to_branch) != self.num_choices+1:
+                raise ValueError("expected len(choice_to_branch) == num_choices+1")
+        if self.branch_to_target is not None:
+            if len(self.branch_to_target) != self.num_branches:
+                raise ValueError("expected len(branch_to_target) == num_branches")
         if self.has_state_valuations:
-            assert self.state_valuations_values is not None
-            assert len(self.state_valuations_values) == self.num_states
+            if self.state_valuations_values is None:
+                raise ValueError("state_valuations is set but state_valuations_values is None")
+            if len(self.state_valuations_values) != self.num_states:
+                raise ValueError("expected len(state_valuations_values) == num_states")
 
 
 class ExplicitAtsConverter:

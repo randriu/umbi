@@ -48,7 +48,7 @@ def is_instance_of_common_type(value: object, type: CommonType) -> bool:
     elif is_integer_type(type):
         return isinstance(value, int)
     elif type == CommonType.DOUBLE:
-        return isinstance(value, float)
+        return isinstance(value, float) or isinstance(value, int) # allow promotion from int to float
     elif type == CommonType.RATIONAL:
         return isinstance(value, Fraction)
     elif is_interval_type(type):
@@ -109,18 +109,3 @@ def interval_base_type(type: CommonType) -> CommonType:
         CommonType.RATIONAL_INTERVAL: CommonType.RATIONAL,
     }[type]
 
-
-
-### vectors of basic types
-
-@dataclass
-class VectorType:
-    base_type: CommonType
-
-CSR_TYPE = VectorType(CommonType.UINT64)
-
-# def is_vector_instance(value: object) -> bool:
-#     return isinstance(value, list)
-
-# def assert_vector_instance(value: object):
-#     assert is_vector_instance(value), f"not a vector (list) object: {value}"
