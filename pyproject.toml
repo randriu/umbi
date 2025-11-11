@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "umbi"
-version = "0.1.22"
+version = "0.1.23"
 description = "Library for input/output of transition systems in a unified Markov binary (UMB) format."
 readme = "README.md"
 authors = [{name = "Roman Andriushchenko", email = "roman.andriu@gmail.com"}]
@@ -46,7 +46,7 @@ format_version = 0
 format_revision = 1
 
 [tool.bumpversion]
-current_version = "0.1.22"
+current_version = "0.1.23"
 commit = true
 tag = true
 tag_name = "v{new_version}"
