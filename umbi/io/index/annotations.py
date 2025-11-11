@@ -3,7 +3,7 @@ Annotation schemas and classes.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Literal, Type
+from typing import Literal, Type
 from marshmallow import fields, validate, post_load
 
 from .json_schema import *
@@ -45,12 +45,12 @@ class AnnotationSchema(JsonSchema):
 @dataclass
 class Annotation(JsonSchemaResult):
     """Annotation data class."""
-    alias: Optional[str] = None
-    description: Optional[str] = None
-    applies_to: Optional[list[Literal["states", "choices", "branches"]]] = None
-    type: Optional[Literal["bool", "double", "rational", "double-interval", "rational-interval", "string"]] = None
-    lower: Optional[float] = None
-    upper: Optional[float] = None
+    alias: str | None = None
+    description: str | None = None
+    applies_to: list[Literal["states", "choices", "branches"]] | None = None
+    type: Literal["bool", "double", "rational", "double-interval", "rational-interval", "string"] | None = None
+    lower: float | None = None
+    upper: float | None = None
 
     @classmethod
     def class_schema(cls) -> Type:
@@ -78,8 +78,8 @@ class AnnotationsSchema(JsonSchema):
 @dataclass
 class Annotations(JsonSchemaResult):
     """Annotations data class."""
-    rewards: Optional[dict[str, Annotation]] = None
-    aps: Optional[dict[str, Annotation]] = None
+    rewards: dict[str, Annotation] | None = None
+    aps: dict[str, Annotation] | None = None
 
     @classmethod
     def class_schema(cls) -> Type:

@@ -1,37 +1,27 @@
 """
-State valuation schemas and classes.
+Variable valuation schemas and classes.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Literal, Union, Type
 from marshmallow import fields, post_load, validate
 from marshmallow_oneofschema.one_of_schema import OneOfSchema
 
 from .json_schema import *
 
+import umbi.datatypes
 
-class PaddingSchema(JsonSchema):
+class ValuationPaddingSchema(JsonSchema):
     """Schema for padding fields."""
     padding = FieldUint(data_key="padding", required=True)
 
     @post_load
-    def make_object(self, data: dict, **kwargs) -> "Padding":
+    def make_object(self, data: dict, **kwargs) -> umbi.datatypes.StructPadding:
         """Create a Padding object from the deserialized data."""
         obj = super().make_object(data, **kwargs)
-        return Padding(padding=obj.padding)
+        return umbi.datatypes.StructPadding(padding=obj.padding)
 
 
-@dataclass
-class Padding(JsonSchemaResult):
-    """Padding data class."""
-    padding: int
-
-    @classmethod
-    def class_schema(cls) -> Type:
-        return PaddingSchema
-
-
-class VariableSchema(JsonSchema):
+class ValuationAttributeSchema(JsonSchema):
     """Schema for variable fields."""
     name = fields.String(data_key="name", required=True)
     type = fields.String(
@@ -43,7 +33,7 @@ class VariableSchema(JsonSchema):
     offset = fields.Float(data_key="offset", required=False)
 
     @post_load
-    def make_object(self, data: dict, **kwargs) -> "Variable":
+    def make_object(self, data: dict, **kwargs) -> umbi.datatypes.StructAttribute:
         """Validate and create a Variable object from the deserialized data."""
         obj = super().make_object(data, **kwargs)
         # Check for unsupported fields
@@ -52,8 +42,8 @@ class VariableSchema(JsonSchema):
                 raise NotImplementedError(
                     f"feature not implemented: '{field}' must be omitted, but got {getattr(obj, field)}."
                 )
-        
-        return Variable(
+
+        return umbi.datatypes.StructAttribute(
             name=obj.name,
             type=obj.type,
             size=getattr(obj, "size", None),
@@ -63,29 +53,15 @@ class VariableSchema(JsonSchema):
         )
 
 
-@dataclass
-class Variable(JsonSchemaResult):
-    """Variable data class."""
-    name: str
-    type: Literal["bool", "int", "uint", "double", "rational", "string"]
-    size: Optional[int] = None
-    lower: Optional[float] = None
-    upper: Optional[float] = None
-    offset: Optional[float] = None
-
-    @classmethod
-    def class_schema(cls) -> Type:
-        return VariableSchema
-
 
 class ValuationFieldSchema(OneOfSchema):
     """Schema for valuation fields (padding or variable)."""
     type_schemas = {
-        "padding": PaddingSchema,
-        "variable": VariableSchema,
+        "padding": ValuationPaddingSchema,
+        "attribute": ValuationAttributeSchema,
     }
 
-    # custom discriminator field since the default 'type' field is used in VariableSchema
+    # custom discriminator field since the default 'type' field is used in ValuationAttributeSchema
     type_field = "_discriminator"
 
     def get_obj_type(self, obj):
@@ -93,14 +69,14 @@ class ValuationFieldSchema(OneOfSchema):
         if hasattr(obj, "padding"):
             return "padding"
         elif hasattr(obj, "name") and hasattr(obj, "type"):
-            return "variable"
+            return "attribute"
         else:
-            raise ValueError("Object must be either a padding or variable namespace")
+            raise ValueError("Object must be either a padding or attribute namespace")
 
     def load(self, json_data, *args, **kwargs):
         """Add discriminator field before loading."""
         assert isinstance(json_data, dict)
-        json_data = dict(json_data, _discriminator="padding" if "padding" in json_data else "variable")
+        json_data = dict(json_data, _discriminator="padding" if "padding" in json_data else "attribute")
         return super().load(json_data, *args, **kwargs)
 
     def dump(self, obj, *args, **kwargs):
@@ -111,33 +87,24 @@ class ValuationFieldSchema(OneOfSchema):
         return result
 
 
-class StateValuationsSchema(JsonSchema):
-    """Schema for state valuations."""
+class VariableValuationsSchema(JsonSchema):
+    """Schema for variable valuations."""
     alignment = FieldUint(data_key="alignment", required=True)
     variables = fields.List(fields.Nested(ValuationFieldSchema), data_key="variables", required=True)
 
     @post_load
-    def make_object(self, data: dict, **kwargs) -> "StateValuations":
-        """Create a StateValuations object from the deserialized data."""
+    def make_object(self, data: dict, **kwargs) -> umbi.datatypes.StructType:
         obj = super().make_object(data, **kwargs)
-        return StateValuations(
+        return umbi.datatypes.StructType(
             alignment=obj.alignment,
-            variables=obj.variables,
+            fields=obj.variables,
         )
+    
+    def dump(self, obj, *args, **kwargs):
+        assert isinstance(obj, umbi.datatypes.StructType)
+        obj_dict = {
+            "alignment": obj.alignment,
+            "variables": self.fields["variables"].serialize("variables", {"variables": obj.fields}),
+        }
+        return obj_dict
 
-
-@dataclass
-class StateValuations(JsonSchemaResult):
-    """State valuations data class."""
-    alignment: int
-    variables: list[Union[Padding, Variable]]
-
-    @classmethod
-    def class_schema(cls) -> Type:
-        return StateValuationsSchema
-
-    def __str__(self) -> str:
-        lines = [f"state valuations (alignment={self.alignment}):"]
-        for var in self.variables:
-            lines.append(f"  {var}")
-        return "\n".join(lines)

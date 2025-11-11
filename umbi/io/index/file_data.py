@@ -3,11 +3,11 @@ File data schemas and classes.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Type
+from typing import Type
 from marshmallow import fields, post_load
 
 from .json_schema import *
-import umbi.binary
+import umbi.datatypes
 
 
 class FileDataSchema(JsonSchema):
@@ -33,10 +33,10 @@ class FileDataSchema(JsonSchema):
 @dataclass
 class FileData(JsonSchemaResult):
     """File data class."""
-    tool: Optional[str] = None
-    tool_version: Optional[str] = None
-    creation_date: Optional[int] = None
-    parameters: Optional[umbi.binary.JsonLike] = None
+    tool: str | None = None
+    tool_version: str | None = None
+    creation_date: int | None = None
+    parameters: umbi.datatypes.JsonLike | None = None
 
     @classmethod
     def class_schema(cls) -> Type:

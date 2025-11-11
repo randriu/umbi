@@ -4,7 +4,6 @@ Base JSON schema classes and utilities.
 
 import logging
 from dataclasses import dataclass
-from typing import ClassVar
 from types import SimpleNamespace
 
 from marshmallow import (
@@ -16,7 +15,7 @@ from marshmallow import (
     validates_schema,
 )
 
-import umbi.binary
+import umbi.datatypes
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +62,7 @@ class JsonSchema(Schema):
         except ValidationError as e:
             logger.error(f"{cls} validation error:")
             # messages is actually a json object, so we can pretty print it
-            # print(umbi.binary.json_to_string(e.messages))
-            logger.error(umbi.binary.json_to_string(e.messages))
+            logger.error(umbi.datatypes.json_to_string(e.messages)) #type: ignore
             raise e
 
 @dataclass
@@ -82,7 +80,7 @@ class JsonSchemaResult(SimpleNamespace):
     def to_json(self):
         """Convert the current object to json and strip null values."""
         json_obj = self.class_schema()().dump(self)
-        json_obj = umbi.binary.json_remove_none_dict_values(json_obj)
+        json_obj = umbi.datatypes.json_remove_none_dict_values(json_obj)
         return json_obj
 
     def validate(self):

@@ -5,21 +5,13 @@ Utilities for reading/wrting Tar archives.
 import io as std_io
 import logging
 
+from umbi.datatypes import CommonType, VectorType, CSR_TYPE
+
 logger = logging.getLogger(__name__)
 import tarfile
 
 import umbi.binary
-import umbi.vectors
-
-
-def is_of_vector_type(filetype: str) -> bool:
-    return filetype.startswith("vector[") and filetype.endswith("]")
-
-
-def value_type_of(filetype: str) -> str:
-    if is_of_vector_type(filetype):
-        return filetype[len("vector[") : -1]
-    raise ValueError(f"filetype {filetype} is not a vector type")
+import umbi.datatypes
 
 
 class TarReader:
@@ -64,7 +56,7 @@ class TarReader:
         logger.debug(f"loading {filename}")
         return self.filename_data[filename]
 
-    def read_filetype(self, filename: str, filetype: str, required: bool = False):
+    def read_filetype(self, filename: str, filetype: CommonType | VectorType, required: bool = False):
         """
         Read a file of a specific type.
         :param filename: name of the file to read
@@ -74,20 +66,19 @@ class TarReader:
         data = self.read_file(filename, required)
         if data is None:
             return None
-        if filetype == "bytes":
+        if filetype == CommonType.BYTES:
             return data
-        if filetype == "json":
-            return umbi.binary.bytes_to_value(data, "json")
-        if filetype == "csr":
-            return umbi.binary.bytes_to_vector(data, "uint64")
-        if is_of_vector_type(filetype):
-            value_type = value_type_of(filetype)
-            return umbi.binary.bytes_to_vector(data, value_type)
+        if filetype == CommonType.JSON:
+            return umbi.binary.bytes_to_common_value(data, CommonType.JSON)
+        # if filetype == CSR_TYPE:
+        #     return umbi.binary.bytes_to_vector(data, CSR_TYPE.base_type)
+        if isinstance(filetype, VectorType):
+            return umbi.binary.bytes_to_vector(data, filetype.base_type)
         else:
             raise ValueError(f"unrecognized file type {filetype} for file {filename}")
 
-    def read_filetype_csr(
-        self, filename: str, value_type: str, required: bool, filename_csr: str, required_csr: bool = False
+    def read_filetype_with_csr(
+        self, filename: str, value_type: CommonType, required: bool, filename_csr: str, required_csr: bool = False
     ) -> list | None:
         """
         Read a file containing a vector of values. Use an accompanying CSR file if needed.
@@ -100,10 +91,10 @@ class TarReader:
         data = self.read_file(filename, required)
         if data is None:
             return None
-        chunk_ranges = self.read_filetype(filename_csr, "csr", required=required_csr)
+        chunk_ranges = self.read_filetype(filename_csr, CSR_TYPE, required=required_csr)
         if chunk_ranges is not None:
             assert isinstance(chunk_ranges, list)
-            chunk_ranges = umbi.vectors.csr_to_ranges(chunk_ranges)
+            chunk_ranges = umbi.datatypes.csr_to_ranges(chunk_ranges)
         return umbi.binary.bytes_to_vector(data, value_type, chunk_ranges=chunk_ranges)
 
 
@@ -117,7 +108,7 @@ class TarWriter:
 
         :param tarpath: path to a tarball file
         :param filename_data: a dictionary filename -> binary string
-        :param compression: compression algorithm one of ("gz", "bz2", "xz" or "" for no compression)
+        :param compression: compression algorithm one of ("gz", "bz2", "xz") or "" for no compression
         """
         logger.debug(f"writing tarfile {tarpath} with compression '{compression}' ...")
         assert compression in ("", "gz", "bz2", "xz"), "unsupported compression algorithm"
@@ -141,22 +132,21 @@ class TarWriter:
             logger.warning(f"file {filename} already exists in the tarball, overwriting")
         self.filename_data[filename] = data
 
-    def add_filetype(self, filename: str, filetype: str, data, required: bool = False):
+    def add_filetype(self, filename: str, filetype: CommonType | VectorType, data, required: bool = False):
         if data is None:
             if required:
                 raise ValueError(f"missing required data for {filename}")
             return
         data_out = None
-        if filetype == "bytes":
+        if filetype == CommonType.BYTES:
             data_out = data
-        elif filetype == "json":
-            data_out = umbi.binary.value_to_bytes(data,"json")
-        elif filetype == "csr":
-            data_out, chunk_csr = umbi.binary.vector_to_bytes(data, "uint64")
-            assert chunk_csr is None, "unexpected chunk csr"
-        elif is_of_vector_type(filetype):
-            value_type = value_type_of(filetype)
-            data_out, chunk_csr = umbi.binary.vector_to_bytes(data, value_type)
+        elif filetype == CommonType.JSON:
+            data_out = umbi.binary.common_value_to_bytes(data, umbi.datatypes.CommonType.JSON)
+        # elif filetype == CSR_TYPE:
+        #     data_out, chunk_csr = umbi.binary.vector_to_bytes(data, CSR_TYPE.base_type)
+        #     assert chunk_csr is None, "unexpected chunk csr"
+        elif isinstance(filetype, VectorType):
+            data_out, chunk_csr = umbi.binary.vector_to_bytes(data, filetype.base_type)
             assert chunk_csr is None, "exporting the vector requires the CSR file, but no such file was specified"
         else:
             raise ValueError(f"unrecognized file type {filetype} for file {filename}")
@@ -164,7 +154,7 @@ class TarWriter:
         assert isinstance(data_out, bytes), "data_out must be of type bytes"
         self.add_file(filename, data_out)
 
-    def add_filetype_csr(self, filename: str, value_type: str, data, required: bool, filename_csr: str):
+    def add_filetype_with_csr(self, filename: str, value_type: CommonType, data, required: bool, filename_csr: str):
         if data is None:
             if required:
                 raise ValueError(f"missing required data for {filename}")
@@ -172,7 +162,7 @@ class TarWriter:
         data_out, chunk_csr = umbi.binary.vector_to_bytes(data, value_type)
         self.add_file(filename, data_out)
         if chunk_csr is not None:
-            self.add_filetype(filename_csr, "csr", chunk_csr, required=True)
+            self.add_filetype(filename_csr, CSR_TYPE, chunk_csr, required=True)
         else:
             logger.debug(f"skipping CSR file {filename_csr}")
 

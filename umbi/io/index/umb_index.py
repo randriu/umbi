@@ -3,7 +3,7 @@ Main UMB index class and schema.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Type
+from typing import Type
 from marshmallow import fields, post_load
 
 from .json_schema import *
@@ -11,10 +11,9 @@ from .model_data import ModelDataSchema, ModelData
 from .file_data import FileDataSchema, FileData
 from .annotations import AnnotationsSchema, Annotations
 from .transition_system import TransitionSystemSchema, TransitionSystem
-from .state_valuations import StateValuationsSchema, StateValuations
+from .variable_valuations import VariableValuationsSchema
 
-import umbi.binary
-
+import umbi.datatypes
 
 class UmbIndexSchema(JsonSchema):
     """UMB index file schema."""
@@ -25,7 +24,7 @@ class UmbIndexSchema(JsonSchema):
     file_data = fields.Nested(FileDataSchema, data_key="file-data", required=False)
     transition_system = fields.Nested(TransitionSystemSchema, data_key="transition-system", required=True)
     annotations = fields.Nested(AnnotationsSchema, data_key="annotations", required=False)
-    state_valuations = fields.Nested(StateValuationsSchema, data_key="state-valuations", required=False)
+    state_valuations = fields.Nested(VariableValuationsSchema, data_key="state-valuations", required=False)
 
     @post_load
     def make_object(self, data: dict, **kwargs) -> "UmbIndex":
@@ -47,11 +46,11 @@ class UmbIndex(JsonSchemaResult):
 
     format_version: int = 0
     format_revision: int = 0
-    model_data: Optional[ModelData] = None
-    file_data: Optional[FileData] = None
+    model_data: ModelData | None = None
+    file_data: FileData | None = None
     transition_system: TransitionSystem = field(default_factory=TransitionSystem)
-    annotations: Optional[Annotations] = None
-    state_valuations: Optional[StateValuations] = None
+    annotations: Annotations | None = None
+    state_valuations: umbi.datatypes.StructType | None = None
 
     @classmethod
     def class_schema(cls) -> Type:
@@ -59,5 +58,5 @@ class UmbIndex(JsonSchemaResult):
 
     def __str__(self) -> str:
         """Convert to a string (json format)."""
-        return umbi.binary.json_to_string(self.to_json())
+        return umbi.datatypes.json_to_string(self.to_json())
 

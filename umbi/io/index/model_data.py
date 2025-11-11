@@ -3,15 +3,13 @@ Model data schemas and classes.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Type
+from typing import Type
 from marshmallow import fields, post_load
 
 from .json_schema import *
 
 
 class ModelDataSchema(JsonSchema):
-    """Model data schema."""
-
     name = fields.String(data_key="name", required=False)
     version = fields.String(data_key="version", required=False)
     authors = fields.List(fields.String(), data_key="authors", required=False)
@@ -22,7 +20,6 @@ class ModelDataSchema(JsonSchema):
 
     @post_load
     def make_object(self, data : dict, **kwargs) -> "ModelData":
-        """Create a ModelData object from the deserialized data."""
         obj = super().make_object(data, **kwargs)
         return ModelData(
             name=obj.name,
@@ -36,14 +33,13 @@ class ModelDataSchema(JsonSchema):
 
 @dataclass
 class ModelData(JsonSchemaResult):
-    """Model data class."""
-    name: Optional[str] = None
-    version: Optional[str] = None
-    authors: Optional[list[str]] = None
-    description: Optional[str] = None
-    comment: Optional[str] = None
-    doi: Optional[str] = None
-    url: Optional[str] = None
+    name: str | None = None
+    version: str | None = None
+    authors: list[str] | None = None
+    description: str | None = None
+    comment: str | None = None
+    doi: str | None = None
+    url: str | None = None
 
     @classmethod
     def class_schema(cls) -> Type:

@@ -1,11 +1,12 @@
 """
-ATS (Abstract Transition System) package.
+umbi.ats: Collection of interfaces over a umbfile.
 """
 
-from .ats import *
+from .model_info import ModelInfo
+from .explicit_ats import TimeType, ExplicitAts
 
 __all__ = [
+    "ModelInfo",
+    "TimeType",
     "ExplicitAts",
-    "read_ats",
-    "write_ats",
 ]

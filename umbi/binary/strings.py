@@ -2,7 +2,8 @@
 Utilities for (de)serializing strings.
 """
 
-from .integers import *
+from umbi.datatypes import CommonType
+from .integers import integer_to_bytes, bytes_to_integer, fixed_size_integer_to_bytes
 from .utils import split_bytes
 
 
@@ -20,7 +21,7 @@ def string_pack(string: str) -> bytes:
     """Convert a utf-8 string to a uint16 length-prefixed byte string."""
     string_bytes = string_to_bytes(string)
     length = len(string_bytes)
-    prefix_bytes = integer_to_bytes(length, num_bytes=2, signed=False)
+    prefix_bytes = fixed_size_integer_to_bytes(length, CommonType.UINT16, little_endian=True)
     return prefix_bytes + string_bytes
 
 
