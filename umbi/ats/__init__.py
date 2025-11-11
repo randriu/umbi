@@ -1,5 +1,5 @@
 """
-ATS (Abstract Transition System) package.
+umbi.ats: a collection of interfaces over a umbfile.
 """
 
 from .model_info import ModelInfo
