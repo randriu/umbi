@@ -3,7 +3,7 @@ Transition system schemas and classes.
 """
 
 from dataclasses import dataclass
-from typing import Literal, Optional, Type
+from typing import Literal, Type
 from marshmallow import fields, validate, post_load
 
 from .json_schema import *
@@ -62,9 +62,9 @@ class TransitionSystem(JsonSchemaResult):
     num_choices: int = 0
     num_actions: int = 0
     num_branches: int = 0
-    num_observations: Optional[int] = None
-    branch_probability_type: Optional[Literal["double", "rational", "double-interval", "rational-interval"]] = None
-    exit_rate_type: Optional[Literal["double", "rational", "double-interval", "rational-interval"]] = None
+    num_observations: int | None = None
+    branch_probability_type: Literal["double", "rational", "double-interval", "rational-interval"] | None = None
+    exit_rate_type: Literal["double", "rational", "double-interval", "rational-interval"] | None = None
 
     @classmethod
     def class_schema(cls) -> Type:

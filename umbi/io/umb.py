@@ -4,8 +4,6 @@ Utilities for reading and writing umbfiles.
 
 from dataclasses import dataclass, field
 import logging
-from time import time
-from typing import Optional, no_type_check
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +131,7 @@ class UmbReader(TarReader):
 
     def read_annotations(
         self, label: str, annotation_info: dict[str, Annotation] | None
-    ) -> Optional[dict[str, dict[str, list]]]:
+    ) -> dict[str, dict[str, list]] | None:
         """
         Read annotation files for all annotations in annotation_info.
         :param label: annotation label, usually one of ["rewards","aps"]
@@ -148,8 +146,8 @@ class UmbReader(TarReader):
         return name_applies_values
 
     def read_variable_valuations(
-        self, state_valuations: Optional[StructType], num_states: int
-    ) -> Optional[list[dict]]:
+        self, state_valuations: StructType | None, num_states: int
+    ) -> list[dict] | None:
         if state_valuations is None:
             return None
         chunks_csr = self.read_common(UmbFile.STATE_TO_VALUATION, required=False)

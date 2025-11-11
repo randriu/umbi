@@ -3,7 +3,7 @@ Model data schemas and classes.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Type
+from typing import Type
 from marshmallow import fields, post_load
 
 from .json_schema import *
@@ -37,13 +37,13 @@ class ModelDataSchema(JsonSchema):
 @dataclass
 class ModelData(JsonSchemaResult):
     """Model data class."""
-    name: Optional[str] = None
-    version: Optional[str] = None
-    authors: Optional[list[str]] = None
-    description: Optional[str] = None
-    comment: Optional[str] = None
-    doi: Optional[str] = None
-    url: Optional[str] = None
+    name: str | None = None
+    version: str | None = None
+    authors: list[str] | None = None
+    description: str | None = None
+    comment: str | None = None
+    doi: str | None = None
+    url: str | None = None
 
     @classmethod
     def class_schema(cls) -> Type:

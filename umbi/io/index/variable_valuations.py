@@ -101,7 +101,6 @@ class VariableValuationsSchema(JsonSchema):
         )
     
     def dump(self, obj, *args, **kwargs):
-        """Customize dumping to map 'fields' to 'variables'."""
         assert isinstance(obj, umbi.datatypes.StructType)
         obj_dict = {
             "alignment": obj.alignment,

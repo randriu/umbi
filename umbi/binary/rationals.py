@@ -3,7 +3,6 @@ Utilities for (de)serializing fractions.
 """
 
 from fractions import Fraction
-from typing import Optional
 
 from .integers import *
 from .utils import split_bytes
@@ -34,7 +33,7 @@ def num_bytes_for_rational(value: Fraction) -> int:
     return max(numerator_size, denominator_size) * 2
 
 
-def rational_to_bytes(value: Fraction, term_size: Optional[int] = None, little_endian: bool = True) -> bytes:
+def rational_to_bytes(value: Fraction, term_size: int | None = None, little_endian: bool = True) -> bytes:
     """
     Convert a fraction to a bytestring. Both numberator and denominator are encoded as signed and unsigned integers, respectively, and have the same size.
     :param term_size: (optional) maximum size in bytes for numerator/denominator; if not provided, the size is determined automatically

@@ -12,9 +12,6 @@ from .structs import struct_pack, struct_unpack
 import logging
 logger = logging.getLogger(__name__)
 
-from typing import Optional
-
-
 
 def bytes_into_chunk_ranges(data: bytes, chunk_ranges: list[tuple[int, int]]) -> list[bytes]:
     """Split bytestring into chunks according to chunk ranges."""
@@ -42,7 +39,7 @@ def bytes_into_chunks(data:bytes, chunk_size: int) -> list[bytes]:
 def bytes_to_vector(
     data: bytes,
     value_type: CommonType | StructType,
-    chunk_ranges: Optional[list[tuple[int, int]]] = None,
+    chunk_ranges: list[tuple[int, int]] | None = None,
     little_endian: bool = True,
 ) -> list:
     """
@@ -74,7 +71,7 @@ def bytes_to_vector(
 
 def vector_to_bytes(
     vector: list, value_type: CommonType | StructType, little_endian: bool = True
-) -> tuple[bytes, Optional[list[int]]]:
+) -> tuple[bytes, list[int] | None]:
     """Encode a list of values as a binary string.
     :param value_type: vector element type, either composite, bool, string or {int32|uint32|int64|uint64|double|rational}[-interval]
     :return: encoded binary string

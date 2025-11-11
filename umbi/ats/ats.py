@@ -1,12 +1,19 @@
 import time
 from dataclasses import dataclass, field, fields
-from typing import Optional, Literal
 
 import umbi.io
 import umbi.io.index as index
 import umbi.version
 import umbi.datatypes
 from umbi.datatypes import CommonType, Numeric, Interval
+from enum import Enum
+
+class TimeType(str, Enum):
+    """Time types for transition systems."""
+    DISCRETE = "discrete"
+    STOCHASTIC = "stochastic"
+    URGENT_STOCHASTIC = "urgent-stochastic"
+
 
 @dataclass
 class ExplicitAts:
@@ -15,7 +22,7 @@ class ExplicitAts:
     #TODO use local ModelData class?
     model_data: index.ModelData | None = None
 
-    time: Literal["discrete", "stochastic", "urgent-stochastic"] = "discrete" #TODO enum
+    time: TimeType = TimeType.DISCRETE
     num_states: int = 0
 
     num_players: int = 0
@@ -32,7 +39,7 @@ class ExplicitAts:
 
     markovian_states: list[int] | None = None
     exit_rate_type: CommonType | None = None
-    state_exit_rate: list[Numeric | Interval] | None = None
+    state_exit_rate: list[Numeric | Interval] | None = None # will become obsolete
 
     num_actions: int = 1
     choice_to_action: list[int] | None = None
@@ -41,7 +48,7 @@ class ExplicitAts:
     num_branches: int = 0
     choice_to_branch: list[int] | None = None
     branch_to_target: list[int] | None = None
-    branch_probability_type: CommonType | None = None
+    branch_probability_type: CommonType | None = None # will become obsolete
     branch_probabilities: list[Numeric | Interval] | None = None
 
     #TODO consolidate each into one structure
@@ -73,13 +80,17 @@ class ExplicitAts:
     def validate(self):
         # TODO implement
 
-        NUMERIC_DATATYPES = [
+        # will become obsolete when we implement automatic detection of types
+        NUMERIC_AND_INTERVAL_DATATYPES = [
             CommonType.DOUBLE, CommonType.RATIONAL,
-            CommonType.DOUBLE_INTERVAL, CommonType.RATIONAL_INTERVAL
+            CommonType.DOUBLE_INTERVAL, CommonType.RATIONAL_INTERVAL,
         ]
-
-        if self.time not in ["discrete", "stochastic", "urgent-stochastic"]:
-            raise ValueError(f"invalid time type {self.time}")
+        if self.exit_rate_type is not None:
+            if self.exit_rate_type not in NUMERIC_AND_INTERVAL_DATATYPES:
+                raise ValueError(f"invalid exit rate type {self.exit_rate_type}")
+        if self.branch_probability_type is not None:
+            if self.branch_probability_type not in NUMERIC_AND_INTERVAL_DATATYPES:
+                raise ValueError(f"invalid branch probability type {self.branch_probability_type}")
 
         if not self.num_states > 0:
             raise ValueError("expected num_states > 0")
@@ -93,12 +104,6 @@ class ExplicitAts:
         if self.num_initial_states != sum(self.initial_states):
             raise ValueError("expected num_initial_states == sum(initial_states)")
 
-        if self.exit_rate_type is not None:
-            if self.exit_rate_type not in NUMERIC_DATATYPES:
-                raise ValueError(f"invalid exit rate type {self.exit_rate_type}")
-        if self.branch_probability_type is not None:
-            if self.branch_probability_type not in NUMERIC_DATATYPES:
-                raise ValueError(f"invalid branch probability type {self.branch_probability_type}")
         if self.state_to_choice is not None:
             if len(self.state_to_choice) != self.num_states+1:
                 raise ValueError("expected len(state_to_choice) == num_states+1")
@@ -129,8 +134,17 @@ class ExplicitAtsConverter:
         ats.model_data = umb.index.model_data
         # skip file_data
         # load index.transition_system fields into ats
-        for f in fields(index.TransitionSystem):
-            setattr(ats, f.name, getattr(umb.index.transition_system, f.name))
+        ts = umb.index.transition_system
+        ats.time = TimeType(ts.time)
+        ats.num_players = ts.num_players
+        ats.num_states = ts.num_states
+        ats.num_initial_states = ts.num_initial_states
+        ats.num_choices = ts.num_choices
+        ats.num_actions = ts.num_actions
+        ats.num_branches = ts.num_branches
+        ats.num_observations = ts.num_observations
+        ats.exit_rate_type = CommonType(ts.exit_rate_type) if ts.exit_rate_type is not None else None
+        ats.branch_probability_type = (CommonType(ts.branch_probability_type) if ts.branch_probability_type is not None else None)
 
         # load annotations
         if umb.index.annotations is not None:
@@ -172,7 +186,16 @@ class ExplicitAtsConverter:
             format_revision=umbi.version.__format_revision__,
             # create transition_system from matching fields
             transition_system=index.TransitionSystem(
-                **{f.name: getattr(ats, f.name) for f in fields(index.TransitionSystem)}
+                time = ats.time.value,
+                num_players = ats.num_players,
+                num_states = ats.num_states,
+                num_initial_states = ats.num_initial_states,
+                num_choices = ats.num_choices,
+                num_actions = ats.num_actions,
+                num_branches = ats.num_branches,
+                num_observations = ats.num_observations,
+                branch_probability_type = ats.branch_probability_type.value if ats.branch_probability_type is not None else None, #type: ignore
+                exit_rate_type = ats.exit_rate_type.value if ats.exit_rate_type is not None else None, #type: ignore
             ),
             model_data=ats.model_data,
             # insert our file_data
