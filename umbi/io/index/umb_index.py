@@ -3,7 +3,7 @@ Main UMB index class and schema.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Type
+from typing import Type
 from marshmallow import fields, post_load
 
 from .json_schema import *

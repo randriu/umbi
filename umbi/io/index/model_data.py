@@ -10,8 +10,6 @@ from .json_schema import *
 
 
 class ModelDataSchema(JsonSchema):
-    """Model data schema."""
-
     name = fields.String(data_key="name", required=False)
     version = fields.String(data_key="version", required=False)
     authors = fields.List(fields.String(), data_key="authors", required=False)
@@ -22,7 +20,6 @@ class ModelDataSchema(JsonSchema):
 
     @post_load
     def make_object(self, data : dict, **kwargs) -> "ModelData":
-        """Create a ModelData object from the deserialized data."""
         obj = super().make_object(data, **kwargs)
         return ModelData(
             name=obj.name,
@@ -36,7 +33,6 @@ class ModelDataSchema(JsonSchema):
 
 @dataclass
 class ModelData(JsonSchemaResult):
-    """Model data class."""
     name: str | None = None
     version: str | None = None
     authors: list[str] | None = None
