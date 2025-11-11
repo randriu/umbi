@@ -1,5 +1,5 @@
 """
-umbi.ats: a collection of interfaces over a umbfile.
+umbi.ats: Collection of interfaces over a umbfile.
 """
 
 from .model_info import ModelInfo

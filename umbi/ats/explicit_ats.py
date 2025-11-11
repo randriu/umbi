@@ -85,7 +85,7 @@ class ExplicitAts:
             return self.branch_to_target[branch_id]
         raise RuntimeError("Branches must have targets in UMBI.")
 
-    def get_action(self, choice_id: int) -> int:
+    def get_choice_action(self, choice_id: int) -> int:
         """Get the action identifier for a choice"""
         if self.choice_to_action is not None:
             return self.choice_to_action[choice_id]
