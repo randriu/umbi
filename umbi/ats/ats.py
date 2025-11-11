@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass, field, fields
-from typing import Optional, Literal
+from typing import Optional, Literal, Iterable
 
 import umbi.io
 import umbi.io.index as index
@@ -35,12 +35,12 @@ class ExplicitAts:
     state_exit_rate: Optional[list] = None #TODO use Numeric
 
     num_actions: int = 0
-    choice_to_action: Optional[list[int]] = None
-    action_strings: Optional[list[str]] = None
+    choice_to_action: list[int] | None = None
+    action_strings: list[str] | None = None
 
     num_branches: int = 0
-    choice_to_branch: Optional[list[int]] = None
-    branch_to_target: Optional[list[int]] = None
+    choice_to_branch: list[int] | None = None
+    branch_to_target: list[int] | None = None
     branch_probability_type: Optional[Literal["double", "rational", "double-interval", "rational-interval"]] = None
     branch_probabilities: Optional[list] = None #TODO use Numeric
 
@@ -53,6 +53,47 @@ class ExplicitAts:
 
     state_valuations: Optional[index.StateValuations] = None
     state_valuations_values: Optional[list[dict]] = None
+
+    # TODO use Numeric return type
+    def get_branch_probability(self, branch_id: int):
+        if self.branch_probabilities is not None:
+            return self.branch_probabilities[branch_id]
+        return 1.0
+
+    def get_branch_target(self, branch_id: int) -> int:
+        if self.branch_to_target is not None:
+            return self.branch_to_target[branch_id]
+        raise RuntimeError("Branches must have targets in UMBI.")
+
+    def get_action(self, choice_id: int) -> int:
+        """Get the action identifier for a choice"""
+        if self.choice_to_action is not None:
+            return self.choice_to_action[choice_id]
+        raise NotImplementedError("Getting actions when not set are not implemented.")
+        #TODO what is the default here?
+
+    def get_action_name(self, action_id: int) -> str:
+        """Get the name of an action identifier"""
+        if self.action_strings is not None:
+            return self.action_strings[action_id]
+        raise NotImplementedError("Getting action names when not set are not implemented.")
+        #TODO what is the default here?
+
+    def choice_range(self, state: int) -> Iterable[int]:
+        """Return the choice range of the given state."""
+        if self.state_to_choice is not None:
+            assert state <= self.num_states
+            return range(self.state_to_choice[state], self.state_to_choice[state + 1])
+        else:
+            return range(state, state+1)
+
+    def branch_range(self, choice: int) -> Iterable[int]:
+        """Return the branch range of the given choice."""
+        if self.choice_to_branch is not None:
+            assert choice <= self.num_choices
+            return range(self.choice_to_branch[choice], self.choice_to_branch[choice + 1])
+        else:
+            return range(choice, choice+1)
 
     def __eq__(self, other):
         #TODO implement
@@ -72,6 +113,7 @@ class ExplicitAts:
 
     def validate(self):
         # TODO implement
+        # TODO check types.
         assert self.num_states > 0
         assert self.num_initial_states == sum(self.initial_states)
         assert self.state_to_choice is None or len(self.state_to_choice) == self.num_states+1
