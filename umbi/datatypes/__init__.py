@@ -19,6 +19,7 @@ from .json import *
 __all__ = [
 	# definitions.py
 	"CommonType",
+    "NumericPrimitive",
 	"Numeric",
     "is_instance_of_common_type",
 

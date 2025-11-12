@@ -7,7 +7,6 @@ Data types and type identifiers used throughout umbi. This module centralizes:
 
 from .json import is_json_instance
 
-from dataclasses import dataclass
 from fractions import Fraction
 import enum
 
@@ -37,9 +36,8 @@ class CommonType(str, enum.Enum):
 
     STRUCT = "struct"
 
-# numeric type alias
-Numeric = int | float | Fraction
-
+""" Alias for primitive numeric types. """
+NumericPrimitive = int | float | Fraction
 
 def is_instance_of_common_type(value: object, type: CommonType) -> bool:
     """Check if a value is an instance of the given common type."""
@@ -109,3 +107,12 @@ def interval_base_type(type: CommonType) -> CommonType:
         CommonType.RATIONAL_INTERVAL: CommonType.RATIONAL,
     }[type]
 
+
+# def is_numeric_type(type: CommonType) -> bool:
+#     """Check if the given common type is a numeric type (including intervals)."""
+#     return is_integer_type(type) or type in [
+#         CommonType.DOUBLE,
+#         CommonType.RATIONAL,
+#         CommonType.DOUBLE_INTERVAL,
+#         CommonType.RATIONAL_INTERVAL
+#     ]
