@@ -11,7 +11,7 @@ from enum import Enum
 
 import umbi.binary
 import umbi.datatypes
-from umbi.datatypes import CommonType, VectorType, CSR_TYPE, StructType, Numeric, Interval
+from umbi.datatypes import CommonType, VectorType, CSR_TYPE, StructType, Numeric
 
 from .index import UmbIndex, Annotation
 from .tar import TarReader, TarWriter
@@ -53,14 +53,14 @@ class ExplicitUmb:
     state_to_player: list[int] | None = None
 
     markovian_states: list[int] | None = None
-    state_exit_rate: list[Numeric|Interval] | None = None
+    state_exit_rate: list[Numeric] | None = None
 
     choice_to_branch: list[int] | None = None
     choice_to_action: list[int] | None = None
     action_strings: list[str] | None = None
 
     branch_to_target: list[int] | None = None
-    branch_probabilities: list[Numeric|Interval] | None = None
+    branch_probabilities: list[Numeric] | None = None
 
     rewards: dict[str, dict[str, list]] | None = None
     aps: dict[str, dict[str, list]] | None = None

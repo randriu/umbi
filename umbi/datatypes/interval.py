@@ -2,20 +2,21 @@
 Interval datatype.
 """
 
-from .common_type import Numeric
-
+from .common_type import NumericPrimitive
 
 class Interval:
     """Represents a numeric interval where left <= right."""
     
-    def __init__(self, left: Numeric, right: Numeric) -> None:
+    def __init__(self, left: "NumericPrimitive", right: "NumericPrimitive") -> None:
         self.left = left
         self.right = right
         self.validate()
     
     def validate(self) -> None:
-        assert isinstance(self.left, Numeric), f"expected numeric left bound, got: {self.left}"
-        assert isinstance(self.right, Numeric), f"expected numeric right bound, got: {self.right}"
+        if not isinstance(self.left, NumericPrimitive):
+            raise ValueError(f"expected numeric left bound, got: {self.left}")
+        if not isinstance(self.right, NumericPrimitive):
+            raise ValueError(f"expected numeric right bound, got: {self.right}")
         if not self.left <= self.right:
             raise ValueError(f"expected {self.left} <=  {self.right}")
 
@@ -27,7 +28,9 @@ class Interval:
             raise ValueError("can only compare Interval with another Interval")
         return self.left == other.left and self.right == other.right
     
-    def __contains__(self, value: Numeric) -> bool:
+    def __contains__(self, value: NumericPrimitive) -> bool:
         """Check if a numeric value is within the interval."""
         return self.left <= value <= self.right
 
+""" Alias for all numeric types, including intervals. """
+Numeric = NumericPrimitive | Interval

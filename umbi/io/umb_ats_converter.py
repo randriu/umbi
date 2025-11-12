@@ -1,11 +1,12 @@
-import umbi.version
+import umbi
 from umbi.datatypes import CommonType
-from umbi.ats import ModelInfo, TimeType, ExplicitAts
+import umbi.ats
 
 from .umb import ExplicitUmb, read_umb, write_umb
-from .index import UmbIndex, TransitionSystem, ModelData, FileData, Annotations
+from .index import UmbIndex, TransitionSystem, ModelData, FileData, Annotation, Annotations
 
 import time
+
 
 def umbi_file_data() -> FileData:
     return FileData(
@@ -15,16 +16,47 @@ def umbi_file_data() -> FileData:
         # parameters=parameters,
     )
 
-def explicit_umb_to_explicit_ats(umb: ExplicitUmb) -> ExplicitAts:
+def umb_annotation_to_ats_annotation(umb_annotation: Annotation, applies_to_values: dict[str, list], ats_annotation: umbi.ats.Annotation):
+    for applies_to in (umb_annotation.applies_to or []):
+        if applies_to == "states":
+            ats_annotation.state_to_value = applies_to_values["states"]
+        elif applies_to == "choices":
+            ats_annotation.choice_to_value = applies_to_values["choices"]
+        elif applies_to == "branches":
+            ats_annotation.branch_to_value = applies_to_values["branches"]
+
+def ats_annotation_to_umb_annotation(annotation: umbi.ats.Annotation) -> tuple[Annotation, dict[str, list]]:
+    applies_to = []
+    applies_to_values = {}
+    if annotation.state_to_value is not None:
+        applies_to.append("states")
+        applies_to_values["states"] = annotation.state_to_value
+    if annotation.choice_to_value is not None:
+        applies_to.append("choices")
+        applies_to_values["choices"] = annotation.choice_to_value
+    if annotation.branch_to_value is not None:
+        applies_to.append("branches")
+        applies_to_values["branches"] = annotation.branch_to_value
+    umb_annotation = Annotation(
+        alias=annotation.alias,
+        description=annotation.description,
+        applies_to=applies_to,
+        type=annotation.type.value,
+        lower=None,
+        upper=None,
+    )
+    return umb_annotation, applies_to_values
+
+def explicit_umb_to_explicit_ats(umb: ExplicitUmb) -> umbi.ats.ExplicitAts:
     umb.validate()
-    ats = ExplicitAts()
+    ats = umbi.ats.ExplicitAts()
 
     ## index
     # skip format_version
     # skip format_revision
     md = umb.index.model_data
     if md is not None:
-        ats.model_info = ModelInfo(
+        ats.model_info = umbi.ats.ModelInfo(
             name=md.name,
             version=md.version,
             authors=md.authors,
@@ -36,7 +68,7 @@ def explicit_umb_to_explicit_ats(umb: ExplicitUmb) -> ExplicitAts:
     # skip file_data
     # load index.transition_system fields into ats
     ts = umb.index.transition_system
-    ats.time = TimeType(ts.time)
+    ats.time = umbi.ats.TimeType(ts.time)
     ats.num_players = ts.num_players
     ats.num_states = ts.num_states
     ats.num_initial_states = ts.num_initial_states
@@ -49,9 +81,31 @@ def explicit_umb_to_explicit_ats(umb: ExplicitUmb) -> ExplicitAts:
 
     # load annotations
     if umb.index.annotations is not None:
-        ats.rewards = umb.index.annotations.rewards
-        ats.aps = umb.index.annotations.aps
-        ats.state_valuations = umb.index.state_valuations
+        if umb.index.annotations.rewards is not None:
+            assert umb.rewards is not None
+            for name, umb_annotation in umb.index.annotations.rewards.items():
+                assert name in umb.rewards
+                applies_to_values = umb.rewards[name]
+                ats_annotation = umbi.ats.RewardAnnotation(
+                    name=name,
+                    type=CommonType(umb_annotation.type) if umb_annotation.type is not None else CommonType.BOOLEAN,
+                    alias=umb_annotation.alias,
+                    description=umb_annotation.description,
+                )
+                umb_annotation_to_ats_annotation(umb_annotation, applies_to_values, ats_annotation)
+                ats.add_reward_annotation(ats_annotation)
+        if umb.index.annotations.aps is not None:
+            assert umb.aps is not None
+            for name, umb_annotation in umb.index.annotations.aps.items():
+                assert name in umb.aps
+                applies_to_values = umb.aps[name]
+                ats_annotation = umbi.ats.AtomicPropositionAnnotation(
+                    name=name,
+                    alias=umb_annotation.alias,
+                    description=umb_annotation.description,
+                )
+                umb_annotation_to_ats_annotation(umb_annotation, applies_to_values, ats_annotation)
+                ats.add_ap_annotation(ats_annotation)
 
     ## values 
     ats.initial_states = umb.initial_states
@@ -68,20 +122,35 @@ def explicit_umb_to_explicit_ats(umb: ExplicitUmb) -> ExplicitAts:
     ats.branch_to_target = umb.branch_to_target
     ats.branch_probabilities = umb.branch_probabilities
 
-    ats.rewards_values = umb.rewards
-    ats.aps_values = umb.aps
+    #TODO consolidate into one structure
+    ats.state_valuations = umb.index.state_valuations
     ats.state_valuations_values = umb.state_valuations
 
     ats.validate()
     return ats
 
 
-def explicit_ats_to_explicit_umb(ats: ExplicitAts) -> ExplicitUmb:
+def explicit_ats_to_explicit_umb(ats: umbi.ats.ExplicitAts) -> ExplicitUmb:
     ats.validate()
     umb = ExplicitUmb()
 
     ## index
     # insert our format_version, format_revision
+
+    reward_annotations = {}
+    reward_values = {}
+    for name, ats_annotation in ats.reward_annotations.items():
+        umb_annotation, applies_to_values = ats_annotation_to_umb_annotation(ats_annotation)
+        reward_values[name] = applies_to_values
+        reward_annotations[name] = umb_annotation
+    ap_annotations = {}
+    ap_values = {}
+    for name, ats_annotation in ats.ap_annotations.items():
+        umb_annotation, applies_to_values = ats_annotation_to_umb_annotation(ats_annotation)
+        ap_values[name] = applies_to_values
+        ap_annotations[name] = umb_annotation
+
+
     umb.index = UmbIndex(
         format_version=umbi.version.__format_version__,
         format_revision=umbi.version.__format_revision__,
@@ -111,8 +180,8 @@ def explicit_ats_to_explicit_umb(ats: ExplicitAts) -> ExplicitUmb:
         file_data=umbi_file_data(),
         # create annotations
         annotations=Annotations(
-            rewards=ats.rewards,
-            aps=ats.aps,
+            rewards=reward_annotations,
+            aps=ap_annotations,
         ),
         state_valuations=ats.state_valuations,
     )
@@ -131,22 +200,22 @@ def explicit_ats_to_explicit_umb(ats: ExplicitAts) -> ExplicitUmb:
     umb.branch_to_target = ats.branch_to_target
     umb.branch_probabilities = ats.branch_probabilities
 
-    umb.rewards = ats.rewards_values
-    umb.aps = ats.aps_values
+    umb.rewards = reward_values
+    umb.aps = ap_values
     umb.state_valuations = ats.state_valuations_values
 
     umb.validate()
     return umb
 
 
-def read_ats(umbpath: str) -> ExplicitAts:
+def read_ats(umbpath: str) -> umbi.ats.ExplicitAts:
     """Read ATS from a umbfile."""
     umb = read_umb(umbpath)
     ats = explicit_umb_to_explicit_ats(umb)
     return ats
 
 
-def write_ats(ats: ExplicitAts, umbpath: str):
+def write_ats(ats: umbi.ats.ExplicitAts, umbpath: str):
     """Write ATS to a umbfile."""
     umb = explicit_ats_to_explicit_umb(ats)
     write_umb(umb, umbpath)

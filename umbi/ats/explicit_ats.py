@@ -1,7 +1,8 @@
-from umbi.datatypes import CommonType, StructType, Numeric, Interval
+from umbi.datatypes import CommonType, StructType, NumericPrimitive, Interval
 
 from dataclasses import dataclass, field
 from .model_info import ModelInfo
+from .annotation import RewardAnnotation, AtomicPropositionAnnotation
 
 from typing import Iterable
 from enum import Enum
@@ -36,7 +37,7 @@ class ExplicitAts:
 
     markovian_states: list[int] | None = None
     exit_rate_type: CommonType | None = None
-    state_exit_rate: list[Numeric | Interval] | None = None # will become obsolete
+    state_exit_rate: list[NumericPrimitive | Interval] | None = None
 
     num_actions: int = 1
     choice_to_action: list[int] | None = None
@@ -45,17 +46,13 @@ class ExplicitAts:
     num_branches: int = 0
     choice_to_branch: list[int] | None = None
     branch_to_target: list[int] | None = None
-    branch_probability_type: CommonType | None = None # will become obsolete
-    branch_probabilities: list[Numeric | Interval] | None = None
+    branch_probability_type: CommonType | None = None
+    branch_probabilities: list[NumericPrimitive | Interval] | None = None
 
-    #TODO consolidate each into one structure
-    from ..io.index import Annotation
-    rewards: dict[str, Annotation] | None = None
-    rewards_values: dict[str, dict[str, list]] | None = None
+    reward_annotations: dict[str, RewardAnnotation] = field(default_factory=dict)
+    ap_annotations: dict[str, AtomicPropositionAnnotation] = field(default_factory=dict)
 
-    aps: dict[str, Annotation] | None = None
-    aps_values: dict[str, dict[str, list]] | None = None
-
+    #TODO consolidate into one structure
     state_valuations: StructType | None = None
     state_valuations_values: list[dict] | None = None
 
@@ -75,7 +72,7 @@ class ExplicitAts:
     def has_state_valuations(self) -> bool:
         return self.state_valuations is not None
 
-    def get_branch_probability(self, branch_id: int) -> Numeric | Interval:
+    def get_branch_probability(self, branch_id: int) -> NumericPrimitive | Interval:
         if self.branch_probabilities is not None:
             return self.branch_probabilities[branch_id]
         return 1.0
@@ -96,10 +93,9 @@ class ExplicitAts:
         """Get the name of an action identifier"""
         if self.action_strings is not None:
             return self.action_strings[action_id]
-        raise NotImplementedError("Getting action names when not set are not implemented.")
-        #TODO what is the default here?
+        raise ValueError("action strings are not set")
 
-    def choice_range(self, state: int) -> Iterable[int]:
+    def state_choice_range(self, state: int) -> Iterable[int]:
         """Return the choice range of the given state."""
         if self.state_to_choice is not None:
             assert state <= self.num_states
@@ -107,7 +103,7 @@ class ExplicitAts:
         else:
             return range(state, state+1)
 
-    def branch_range(self, choice: int) -> Iterable[int]:
+    def choice_branch_range(self, choice: int) -> Iterable[int]:
         """Return the branch range of the given choice."""
         if self.choice_to_branch is not None:
             assert choice <= self.num_choices
@@ -115,10 +111,43 @@ class ExplicitAts:
         else:
             return range(choice, choice+1)
 
+    @property
+    def reward_annotation_names(self) -> list[str]:
+        """Get the names of all reward annotations."""
+        return list(self.reward_annotations.keys())
+
+    def add_reward_annotation(self, annotation: RewardAnnotation):
+        """Add a reward annotation."""
+        if annotation.name in self.reward_annotations:
+            raise ValueError(f"reward annotation with name {annotation.name} already exists")
+        self.reward_annotations[annotation.name] = annotation
+    
+    def get_reward_annotation(self, name: str) -> RewardAnnotation:
+        """Get the reward annotation with the given name."""
+        if name not in self.reward_annotations:
+            raise ValueError(f"reward annotation with name {name} does not exist")
+        return self.reward_annotations[name]
+
+    @property
+    def ap_annotation_names(self) -> list[str]:
+        """Get the names of all atomic proposition annotations."""
+        return list(self.ap_annotations.keys())
+
+    def add_ap_annotation(self, annotation: AtomicPropositionAnnotation):
+        """Add an atomic proposition annotation."""
+        if annotation.name in self.ap_annotations:
+            raise ValueError(f"AP annotation with name {annotation.name} already exists")
+        self.ap_annotations[annotation.name] = annotation
+    
+    def get_ap_annotation(self, name: str) -> AtomicPropositionAnnotation:
+        """Get the atomic proposition annotation with the given name."""
+        if name not in self.ap_annotations:
+            raise ValueError(f"AP annotation with name {name} does not exist")
+        return self.ap_annotations[name]
+
     def validate(self):
         # TODO implement
 
-        # will become obsolete when we implement automatic detection of types
         NUMERIC_AND_INTERVAL_DATATYPES = [
             CommonType.DOUBLE, CommonType.RATIONAL,
             CommonType.DOUBLE_INTERVAL, CommonType.RATIONAL_INTERVAL,
@@ -157,3 +186,4 @@ class ExplicitAts:
             if len(self.state_valuations_values) != self.num_states:
                 raise ValueError("expected len(state_valuations_values) == num_states")
 
+        
