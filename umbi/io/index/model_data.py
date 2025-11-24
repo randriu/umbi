@@ -4,6 +4,7 @@ Model data schemas and classes.
 
 from dataclasses import dataclass
 from typing import Type
+
 from marshmallow import fields, post_load
 
 from .json_schema import *
@@ -19,7 +20,7 @@ class ModelDataSchema(JsonSchema):
     url = fields.String(data_key="url", required=False)
 
     @post_load
-    def make_object(self, data : dict, **kwargs) -> "ModelData":
+    def make_object(self, data: dict, **kwargs) -> "ModelData":
         obj = super().make_object(data, **kwargs)
         return ModelData(
             name=obj.name,
@@ -30,6 +31,7 @@ class ModelDataSchema(JsonSchema):
             doi=obj.doi,
             url=obj.url,
         )
+
 
 @dataclass
 class ModelData(JsonSchemaResult):

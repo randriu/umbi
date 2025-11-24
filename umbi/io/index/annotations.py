@@ -4,7 +4,8 @@ Annotation schemas and classes.
 
 from dataclasses import dataclass
 from typing import Literal, Type
-from marshmallow import fields, validate, post_load
+
+from marshmallow import fields, post_load, validate
 
 from .json_schema import *
 
@@ -45,6 +46,7 @@ class AnnotationSchema(JsonSchema):
 @dataclass
 class Annotation(JsonSchemaResult):
     """Annotation data class."""
+
     alias: str | None = None
     description: str | None = None
     applies_to: list[Literal["states", "choices", "branches"]] | None = None
@@ -78,6 +80,7 @@ class AnnotationsSchema(JsonSchema):
 @dataclass
 class Annotations(JsonSchemaResult):
     """Annotations data class."""
+
     rewards: dict[str, Annotation] | None = None
     aps: dict[str, Annotation] | None = None
 

@@ -2,17 +2,22 @@
 (De)serialization of common types.
 """
 
-import umbi.datatypes
-from umbi.datatypes import CommonType, Numeric, JsonLike
-
-from .integers import num_bytes_for_fixed_size_integer, fixed_size_integer_to_bytes, bytes_to_fixed_size_integer
-from .floats import double_to_bytes, bytes_to_double
-from .rationals import rational_to_bytes, bytes_to_rational
-from .intervals import interval_to_bytes, bytes_to_interval
-from .strings import string_to_bytes, bytes_to_string
-from .jsons import json_to_bytes, bytes_to_json
-
 from typing import no_type_check
+
+import umbi.datatypes
+from umbi.datatypes import CommonType, JsonLike, Numeric
+
+from .floats import bytes_to_double, double_to_bytes
+from .integers import (
+    bytes_to_fixed_size_integer,
+    fixed_size_integer_to_bytes,
+    num_bytes_for_fixed_size_integer,
+)
+from .intervals import bytes_to_interval, interval_to_bytes
+from .jsons import bytes_to_json, json_to_bytes
+from .rationals import bytes_to_rational, rational_to_bytes
+from .strings import bytes_to_string, string_to_bytes
+
 
 def num_bytes_for_common_type(type: CommonType) -> int:
     """Return the number of bytes needed to represent a value of the given type."""

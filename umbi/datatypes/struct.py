@@ -6,6 +6,7 @@ The serialization operations for composites remain in umbi.binary.composites.
 """
 
 from dataclasses import dataclass, field
+
 from .common_type import *
 
 
@@ -26,13 +27,22 @@ class StructAttribute:
 
     name: str
     type: CommonType
-    size: int | None = None # number of bits for values of fixed-size types; None for variable-size types (string, rational)
+    size: int | None = (
+        None  # number of bits for values of fixed-size types; None for variable-size types (string, rational)
+    )
     lower: float | None = None  # lower bound (for numeric types)
     upper: float | None = None  # upper bound (for numeric types)
     offset: float | None = None  # lower value offset (for numeric types)
 
     def validate(self):
-        if self.type not in [CommonType.BOOLEAN, CommonType.INT, CommonType.UINT, CommonType.DOUBLE, CommonType.RATIONAL, CommonType.STRING]:
+        if self.type not in [
+            CommonType.BOOLEAN,
+            CommonType.INT,
+            CommonType.UINT,
+            CommonType.DOUBLE,
+            CommonType.RATIONAL,
+            CommonType.STRING,
+        ]:
             raise ValueError(f"Unsupported field type: {self.type}")
         if self.size is None:
             if self.type in [CommonType.INT, CommonType.UINT]:
@@ -64,8 +74,8 @@ class StructType:
     def validate(self):
         for item in self.fields:
             item.validate()
-        #TODO check alignment
-    
+        # TODO check alignment
+
     def __str__(self) -> str:
         lines = [f"struct (alignment={self.alignment}):"]
         for f in self.fields:
@@ -74,4 +84,3 @@ class StructType:
 
     def __iter__(self):
         return iter(self.fields)
-    

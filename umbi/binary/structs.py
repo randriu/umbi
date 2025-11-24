@@ -2,14 +2,21 @@
 Utilities for packing and unpacking composite datatypes (structs).
 """
 
-from umbi.datatypes import CommonType, StructType, StructAttribute, StructPadding, Numeric
-
 from fractions import Fraction
+
 from bitstring import BitArray
 
+from umbi.datatypes import (
+    CommonType,
+    Numeric,
+    StructAttribute,
+    StructPadding,
+    StructType,
+)
+
 from .bitvectors import boolean_pack, boolean_unpack
-from .integers import integer_pack, integer_unpack
 from .floats import double_pack, double_unpack
+from .integers import integer_pack, integer_unpack
 from .rationals import rational_pack, rational_unpack
 from .strings import string_pack, string_unpack
 from .utils import split_bytes

@@ -4,7 +4,8 @@ Transition system schemas and classes.
 
 from dataclasses import dataclass
 from typing import Literal, Type
-from marshmallow import fields, validate, post_load
+
+from marshmallow import fields, post_load, validate
 
 from .json_schema import *
 
@@ -55,6 +56,7 @@ class TransitionSystemSchema(JsonSchema):
 @dataclass
 class TransitionSystem(JsonSchemaResult):
     """Transition system data class."""
+
     time: Literal["discrete", "stochastic", "urgent-stochastic"] = "discrete"
     num_players: int = 0
     num_states: int = 0
@@ -62,7 +64,7 @@ class TransitionSystem(JsonSchemaResult):
     num_choices: int = 0
     num_actions: int = 0
     num_branches: int = 0
-    num_observations: int | None = None
+    num_observations: int = 0
     branch_probability_type: Literal["double", "rational", "double-interval", "rational-interval"] | None = None
     exit_rate_type: Literal["double", "rational", "double-interval", "rational-interval"] | None = None
 

@@ -3,35 +3,53 @@ Auxiliary vector operations.
 """
 
 from dataclasses import dataclass
+
 from .common_type import CommonType
-from .utils import is_instance_of_common_type, promote_numeric_primitive, promote_numeric, get_instance_type
+from .utils import (
+    get_instance_type,
+    is_instance_of_common_type,
+    promote_numeric,
+    promote_numeric_primitive,
+)
+
+# TODO add CSR vector?
+# TODO add vector of ranges (for CSR?)
+
 
 @dataclass
 class VectorType:
     base_type: CommonType
 
+
 """Alias for a CSR vector type."""
 CSR_TYPE = VectorType(CommonType.UINT64)
+
 
 def assert_is_list(vector: object):
     if not isinstance(vector, list):
         raise TypeError(f"expected a list/vector, got {type(vector)}")
 
+
 def is_vector_of_common_type(vector: list, element_type: CommonType) -> bool:
     return all(is_instance_of_common_type(elem, element_type) for elem in vector)
+
 
 def is_vector_of_type(vector: list, element_type: VectorType) -> bool:
     return is_vector_of_common_type(vector, element_type.base_type)
 
+
 def promote_to_vector_of_numeric_primitive(vector: list, target_type: CommonType) -> list:
     return [promote_numeric_primitive(elem, target_type) for elem in vector]
+
 
 def promote_to_vector_of_numeric(vector: list, target_type: CommonType) -> list:
     return [promote_numeric(elem, target_type) for elem in vector]
 
+
 def vector_element_types(vector: list) -> set[CommonType]:
     """Determine the set of common types of elements in the vector."""
     return set([get_instance_type(x) for x in vector])
+
 
 def vector_element_type(vector: list) -> CommonType:
     """Determine the common type of elements in the vector. Raises an error if multiple types are found."""
@@ -40,11 +58,12 @@ def vector_element_type(vector: list) -> CommonType:
         raise ValueError(f"vector has multiple element types: {types}")
     return types.pop()
 
+
 def vector_promotion_type(vector: list) -> CommonType:
     """Determine the common type to which all elements in the vector can be promoted."""
     if len(vector) == 0:
-        return CommonType.INT # whatever
-    types = set([get_instance_type(x) for x in vector])
+        return CommonType.INT  # whatever
+    types = vector_element_types(vector)
     if CommonType.RATIONAL_INTERVAL in types:
         return CommonType.RATIONAL_INTERVAL
     elif CommonType.DOUBLE_INTERVAL in types:
@@ -56,9 +75,11 @@ def vector_promotion_type(vector: list) -> CommonType:
         return CommonType.RATIONAL
     elif CommonType.DOUBLE in types:
         return CommonType.DOUBLE
-    else:
-        assert len(types) == 1 and CommonType.INT in types, "unexpected types in vector"
+    elif CommonType.INT in types:
         return CommonType.INT
+    else:
+        raise ValueError(f"vector contains non-numeric types ({types}), cannot determine promotion type")
+
 
 def promote_vector(vector: list) -> list:
     """Promote a vector of numeric values to a common type."""

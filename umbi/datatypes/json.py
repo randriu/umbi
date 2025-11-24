@@ -19,6 +19,7 @@ def is_json_instance(value: object) -> bool:
         return all(isinstance(k, str) and is_json_instance(v) for k, v in value.items())
     return False
 
+
 def json_remove_none_dict_values(json_obj: JsonLike) -> JsonLike:
     """Recursively remove all None (null) dictionary values from a JSON (sub-)object."""
     if isinstance(json_obj, dict):

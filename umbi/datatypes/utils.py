@@ -1,14 +1,20 @@
-from .json import is_json_instance
-from .common_type import CommonType, is_integer_type, is_interval_type, interval_base_type
-from .interval import Interval
-from .struct import StructType
-
 from fractions import Fraction
+
+from .common_type import (
+    CommonType,
+    interval_base_type,
+    is_integer_type,
+    is_interval_type,
+)
+from .interval import Interval
+from .json import is_json_instance
+from .struct import StructType
 
 """ Alias for primitive numeric types. """
 NumericPrimitive = int | float | Fraction
 """ Alias for all numeric types, including intervals. """
 Numeric = NumericPrimitive | Interval
+
 
 def get_instance_type(value: object) -> CommonType:
     """Determine the common type of a given value."""
@@ -80,4 +86,3 @@ def promote_numeric(value: Numeric, target_type: CommonType) -> Numeric:
     left = promote_numeric_primitive(left, base_type)
     right = promote_numeric_primitive(right, base_type)
     return Interval(left, right)
-    

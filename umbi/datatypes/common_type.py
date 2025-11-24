@@ -7,8 +7,10 @@ Data types and type identifiers used throughout umbi. This module centralizes:
 
 import enum
 
+
 class CommonType(str, enum.Enum):
     """String literals for common datatypes."""
+
     BYTES = "bytes"
     BOOLEAN = "bool"
 
@@ -33,25 +35,32 @@ class CommonType(str, enum.Enum):
 
     STRUCT = "struct"
 
+
 ### integers
+
 
 def is_fixed_size_integer_type(type: CommonType) -> bool:
     return type in [
-        CommonType.INT16, CommonType.UINT16,
-        CommonType.INT32, CommonType.UINT32,
-        CommonType.INT64, CommonType.UINT64
+        CommonType.INT16,
+        CommonType.UINT16,
+        CommonType.INT32,
+        CommonType.UINT32,
+        CommonType.INT64,
+        CommonType.UINT64,
     ]
 
+
 def is_variable_size_integer_type(type: CommonType) -> bool:
-    return type in [
-        CommonType.INT, CommonType.UINT
-    ]
+    return type in [CommonType.INT, CommonType.UINT]
+
 
 def is_integer_type(type: CommonType) -> bool:
     return is_variable_size_integer_type(type) or is_fixed_size_integer_type(type)
 
+
 def assert_integer_type(type: CommonType):
     assert is_integer_type(type), f"not an integer type: {type}"
+
 
 def integer_type_signed(type: CommonType) -> bool:
     assert_integer_type(type)
@@ -62,13 +71,12 @@ def integer_type_signed(type: CommonType) -> bool:
 
 
 def is_interval_type(type: CommonType) -> bool:
-    return type in [
-        CommonType.DOUBLE_INTERVAL,
-        CommonType.RATIONAL_INTERVAL
-    ]
+    return type in [CommonType.DOUBLE_INTERVAL, CommonType.RATIONAL_INTERVAL]
+
 
 def assert_interval_type(type: CommonType):
     assert is_interval_type(type), f"not an interval type: {type}"
+
 
 def interval_base_type(type: CommonType) -> CommonType:
     assert_interval_type(type)

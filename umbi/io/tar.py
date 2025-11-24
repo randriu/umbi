@@ -5,7 +5,7 @@ Utilities for reading/wrting Tar archives.
 import io as std_io
 import logging
 
-from umbi.datatypes import CommonType, VectorType, CSR_TYPE
+from umbi.datatypes import CSR_TYPE, CommonType, VectorType
 
 logger = logging.getLogger(__name__)
 import tarfile
