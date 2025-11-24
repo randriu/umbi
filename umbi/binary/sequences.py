@@ -2,14 +2,18 @@
 (De)serialization of sequences of common types or structs.
 """
 
+import logging
+
 from umbi.datatypes import CommonType, StructType
 
 from .bitvectors import bitvector_to_bytes, bytes_to_bitvector
-from .common import num_bytes_for_common_type, common_value_to_bytes, bytes_to_common_value
+from .common import (
+    bytes_to_common_value,
+    common_value_to_bytes,
+    num_bytes_for_common_type,
+)
 from .structs import struct_pack, struct_unpack
 
-
-import logging
 logger = logging.getLogger(__name__)
 
 
@@ -29,11 +33,11 @@ def chunks_to_csr(chunks: list[bytes]) -> list[int]:
     return csr
 
 
-def bytes_into_chunks(data:bytes, chunk_size: int) -> list[bytes]:
+def bytes_into_chunks(data: bytes, chunk_size: int) -> list[bytes]:
     """Split bytestring into evenly sized chunks."""
     assert chunk_size > 0, f"expected {chunk_size} to be a positive number"
     assert len(data) % chunk_size == 0, f"expected {len(data)} to be divisible by {chunk_size}"
-    return [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+    return [data[i : i + chunk_size] for i in range(0, len(data), chunk_size)]
 
 
 def bytes_to_vector(

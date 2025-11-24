@@ -4,16 +4,18 @@ Main UMB index class and schema.
 
 from dataclasses import dataclass, field
 from typing import Type
+
 from marshmallow import fields, post_load
 
+import umbi.datatypes
+
+from .annotations import Annotations, AnnotationsSchema
+from .file_data import FileData, FileDataSchema
 from .json_schema import *
-from .model_data import ModelDataSchema, ModelData
-from .file_data import FileDataSchema, FileData
-from .annotations import AnnotationsSchema, Annotations
-from .transition_system import TransitionSystemSchema, TransitionSystem
+from .model_data import ModelData, ModelDataSchema
+from .transition_system import TransitionSystem, TransitionSystemSchema
 from .variable_valuations import VariableValuationsSchema
 
-import umbi.datatypes
 
 class UmbIndexSchema(JsonSchema):
     """UMB index file schema."""
@@ -59,4 +61,3 @@ class UmbIndex(JsonSchemaResult):
     def __str__(self) -> str:
         """Convert to a string (json format)."""
         return umbi.datatypes.json_to_string(self.to_json())
-

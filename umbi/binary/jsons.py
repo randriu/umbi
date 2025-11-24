@@ -3,7 +3,8 @@
 """
 
 import umbi.datatypes
-from .strings import string_to_bytes, bytes_to_string
+
+from .strings import bytes_to_string, string_to_bytes
 
 
 def bytes_to_json(data: bytes) -> umbi.datatypes.JsonLike:

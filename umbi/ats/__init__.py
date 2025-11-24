@@ -2,9 +2,9 @@
 umbi.ats: Collection of interfaces over a umbfile.
 """
 
+from .annotation import Annotation, AtomicPropositionAnnotation, RewardAnnotation
+from .explicit_ats import ExplicitAts, TimeType
 from .model_info import ModelInfo
-from .annotation import Annotation, RewardAnnotation, AtomicPropositionAnnotation
-from .explicit_ats import TimeType, ExplicitAts
 
 __all__ = [
     "ModelInfo",

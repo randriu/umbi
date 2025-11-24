@@ -1,10 +1,12 @@
 """
 (De)serializers for integers.
 """
+
+from bitstring import BitArray
+
 import umbi.datatypes
 from umbi.datatypes import CommonType
 
-from bitstring import BitArray
 
 def num_bits_for_integer(value: int, signed: bool = True, round_up: bool = True) -> int:
     """
@@ -18,8 +20,8 @@ def num_bits_for_integer(value: int, signed: bool = True, round_up: bool = True)
         if value >= 0:
             num_bits = value.bit_length()
         else:
-            num_bits = (-value-1).bit_length()
-        num_bits += 1 # add sign bit
+            num_bits = (-value - 1).bit_length()
+        num_bits += 1  # add sign bit
     if round_up and num_bits % 8 != 0:
         num_bits += 8 - (num_bits % 8)
     return num_bits
@@ -30,7 +32,7 @@ def num_bytes_for_integer(value: int, signed: bool = True, round_up: bool = True
     Return the number of bytes needed to represent an integer value.
     :param round_up: if True, the number of bytes is rounded up to the nearest multiple of 8
     """
-    num_bytes = num_bits_for_integer(value, signed=signed, round_up=True) // 8 # round up to full bytes
+    num_bytes = num_bits_for_integer(value, signed=signed, round_up=True) // 8  # round up to full bytes
     if round_up and num_bytes % 8 != 0:
         num_bytes += 8 - (num_bytes % 8)
     return num_bytes
@@ -40,21 +42,21 @@ def num_bytes_for_fixed_size_integer(type: CommonType) -> int:
     """Return the size in bytes of a fixed-size integer type."""
     assert umbi.datatypes.is_fixed_size_integer_type(type), f"not a fixed-size integer type: {type}"
     size_map = {
-        CommonType.INT16: 2, CommonType.UINT16: 2,
-        CommonType.INT32: 4, CommonType.UINT32: 4,
-        CommonType.INT64: 8, CommonType.UINT64: 8
+        CommonType.INT16: 2,
+        CommonType.UINT16: 2,
+        CommonType.INT32: 4,
+        CommonType.UINT32: 4,
+        CommonType.INT64: 8,
+        CommonType.UINT64: 8,
     }
     return size_map[type]
 
 
-
-def assert_integer_fits(
-        value: int, signed: bool = True, num_bits: int | None = None, num_bytes: int | None = None
-):
+def assert_integer_fits(value: int, signed: bool = True, num_bits: int | None = None, num_bytes: int | None = None):
     """Assert that an integer fits in the given number of bits/bytes."""
     assert (num_bits is None) != (num_bytes is None), "either num_bits or num_bytes must be provided, but not both"
     if num_bits is None:
-        assert num_bytes is not None # for mypy
+        assert num_bytes is not None  # for mypy
         num_bits = num_bytes * 8
     if signed:
         max_value = (1 << (num_bits - 1)) - 1

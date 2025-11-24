@@ -1,14 +1,22 @@
-from umbi.datatypes import CommonType, StructType, NumericPrimitive, Interval
-
 from dataclasses import dataclass, field
-from .model_info import ModelInfo
-from .annotation import RewardAnnotation, AtomicPropositionAnnotation
-
-from typing import Iterable
 from enum import Enum
+from typing import Iterable
+
+from umbi.datatypes import (
+    CommonType,
+    Interval,
+    Numeric,
+    StructType,
+    vector_promotion_type,
+)
+
+from .annotation import AtomicPropositionAnnotation, RewardAnnotation
+from .model_info import ModelInfo
+
 
 class TimeType(str, Enum):
     """Time types for transition systems."""
+
     DISCRETE = "discrete"
     STOCHASTIC = "stochastic"
     URGENT_STOCHASTIC = "urgent-stochastic"
@@ -18,7 +26,7 @@ class TimeType(str, Enum):
 class ExplicitAts:
     """Explicit container for an annotated transition system (ATS)."""
 
-    #TODO annotate fields, describe optionality and defaults
+    # TODO annotate fields, describe optionality and defaults
 
     model_info: ModelInfo | None = None
     time: TimeType = TimeType.DISCRETE
@@ -28,16 +36,15 @@ class ExplicitAts:
     state_to_player: list[int] | None = None
 
     num_initial_states: int = 0
-    initial_states: list[int] = field(default_factory=list)
+    state_is_initial: list[bool] = field(default_factory=list)
 
-    num_observations: int | None = None
+    num_observations: int = 0
 
     num_choices: int = 0
     state_to_choice: list[int] | None = None
 
-    markovian_states: list[int] | None = None
-    exit_rate_type: CommonType | None = None
-    state_exit_rate: list[NumericPrimitive | Interval] | None = None
+    state_is_markovian: list[bool] | None = None
+    state_exit_rate: list[Numeric] | None = None
 
     num_actions: int = 1
     choice_to_action: list[int] | None = None
@@ -46,18 +53,17 @@ class ExplicitAts:
     num_branches: int = 0
     choice_to_branch: list[int] | None = None
     branch_to_target: list[int] | None = None
-    branch_probability_type: CommonType | None = None
-    branch_probabilities: list[NumericPrimitive | Interval] | None = None
+    branch_probabilities: list[Numeric] | None = None
 
     reward_annotations: dict[str, RewardAnnotation] = field(default_factory=dict)
     ap_annotations: dict[str, AtomicPropositionAnnotation] = field(default_factory=dict)
 
-    #TODO consolidate into one structure
+    # TODO consolidate into one structure
     state_valuations: StructType | None = None
     state_valuations_values: list[dict] | None = None
 
     def __eq__(self, other):
-        #TODO implement
+        # TODO implement
         if not isinstance(other, ExplicitAts):
             return False
         if self.num_states != other.num_states:
@@ -69,10 +75,26 @@ class ExplicitAts:
         return True
 
     @property
-    def has_state_valuations(self) -> bool:
-        return self.state_valuations is not None
+    def initial_states(self) -> list[int]:
+        """Get the list of the initial states."""
+        return [i for i, is_initial in enumerate(self.state_is_initial) if is_initial]
 
-    def get_branch_probability(self, branch_id: int) -> NumericPrimitive | Interval:
+    def set_initial_states(self, initial_states: list[int]):
+        """Set the initial states."""
+        self.state_is_initial = [False] * self.num_states
+        for s in initial_states:
+            if s >= self.num_states:
+                raise ValueError(f"Invalid initial state {s}, must be < {self.num_states}.")
+            self.state_is_initial[s] = True
+
+    @property
+    def markovian_states(self) -> list[int]:
+        """Get the list of the markovian states."""
+        if self.state_is_markovian is None:
+            raise ValueError("state_is_markovian is not set")
+        return [i for i, is_markovian in enumerate(self.state_is_markovian) if is_markovian]
+
+    def get_branch_probability(self, branch_id: int) -> Numeric:
         if self.branch_probabilities is not None:
             return self.branch_probabilities[branch_id]
         return 1.0
@@ -87,7 +109,7 @@ class ExplicitAts:
         if self.choice_to_action is not None:
             return self.choice_to_action[choice_id]
         raise NotImplementedError("Getting actions when not set are not implemented.")
-        #TODO what is the default here?
+        # TODO what is the default here?
 
     def get_action_name(self, action_id: int) -> str:
         """Get the name of an action identifier"""
@@ -101,7 +123,7 @@ class ExplicitAts:
             assert state <= self.num_states
             return range(self.state_to_choice[state], self.state_to_choice[state + 1])
         else:
-            return range(state, state+1)
+            return range(state, state + 1)
 
     def choice_branch_range(self, choice: int) -> Iterable[int]:
         """Return the branch range of the given choice."""
@@ -109,7 +131,19 @@ class ExplicitAts:
             assert choice <= self.num_choices
             return range(self.choice_to_branch[choice], self.choice_to_branch[choice + 1])
         else:
-            return range(choice, choice+1)
+            return range(choice, choice + 1)
+
+    @property
+    def branch_probability_type(self) -> CommonType | None:
+        if self.branch_probabilities is None:
+            return None
+        return vector_promotion_type(self.branch_probabilities)
+
+    @property
+    def exit_rate_type(self) -> CommonType | None:
+        if self.state_exit_rate is None:
+            return None
+        return vector_promotion_type(self.state_exit_rate)
 
     @property
     def reward_annotation_names(self) -> list[str]:
@@ -121,7 +155,7 @@ class ExplicitAts:
         if annotation.name in self.reward_annotations:
             raise ValueError(f"reward annotation with name {annotation.name} already exists")
         self.reward_annotations[annotation.name] = annotation
-    
+
     def get_reward_annotation(self, name: str) -> RewardAnnotation:
         """Get the reward annotation with the given name."""
         if name not in self.reward_annotations:
@@ -138,26 +172,19 @@ class ExplicitAts:
         if annotation.name in self.ap_annotations:
             raise ValueError(f"AP annotation with name {annotation.name} already exists")
         self.ap_annotations[annotation.name] = annotation
-    
+
     def get_ap_annotation(self, name: str) -> AtomicPropositionAnnotation:
         """Get the atomic proposition annotation with the given name."""
         if name not in self.ap_annotations:
             raise ValueError(f"AP annotation with name {name} does not exist")
         return self.ap_annotations[name]
 
+    @property
+    def has_state_valuations(self) -> bool:
+        return self.state_valuations is not None
+
     def validate(self):
         # TODO implement
-
-        NUMERIC_AND_INTERVAL_DATATYPES = [
-            CommonType.DOUBLE, CommonType.RATIONAL,
-            CommonType.DOUBLE_INTERVAL, CommonType.RATIONAL_INTERVAL,
-        ]
-        if self.exit_rate_type is not None:
-            if self.exit_rate_type not in NUMERIC_AND_INTERVAL_DATATYPES:
-                raise ValueError(f"invalid exit rate type {self.exit_rate_type}")
-        if self.branch_probability_type is not None:
-            if self.branch_probability_type not in NUMERIC_AND_INTERVAL_DATATYPES:
-                raise ValueError(f"invalid branch probability type {self.branch_probability_type}")
 
         if not self.num_states > 0:
             raise ValueError("expected num_states > 0")
@@ -168,14 +195,14 @@ class ExplicitAts:
             if len(self.state_to_player) != self.num_states:
                 raise ValueError("expected len(state_to_player) == num_states")
 
-        if self.num_initial_states != sum(self.initial_states):
-            raise ValueError("expected num_initial_states == sum(initial_states)")
+        if self.num_initial_states != len(self.initial_states):
+            raise ValueError("expected num_initial_states == len(initial_states)")
 
         if self.state_to_choice is not None:
-            if len(self.state_to_choice) != self.num_states+1:
+            if len(self.state_to_choice) != self.num_states + 1:
                 raise ValueError("expected len(state_to_choice) == num_states+1")
         if self.choice_to_branch is not None:
-            if len(self.choice_to_branch) != self.num_choices+1:
+            if len(self.choice_to_branch) != self.num_choices + 1:
                 raise ValueError("expected len(choice_to_branch) == num_choices+1")
         if self.branch_to_target is not None:
             if len(self.branch_to_target) != self.num_branches:
@@ -185,5 +212,3 @@ class ExplicitAts:
                 raise ValueError("state_valuations is set but state_valuations_values is None")
             if len(self.state_valuations_values) != self.num_states:
                 raise ValueError("expected len(state_valuations_values) == num_states")
-
-        

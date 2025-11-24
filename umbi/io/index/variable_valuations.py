@@ -3,15 +3,18 @@ Variable valuation schemas and classes.
 """
 
 from dataclasses import dataclass
+
 from marshmallow import fields, post_load, validate
 from marshmallow_oneofschema.one_of_schema import OneOfSchema
 
+import umbi.datatypes
+
 from .json_schema import *
 
-import umbi.datatypes
 
 class ValuationPaddingSchema(JsonSchema):
     """Schema for padding fields."""
+
     padding = FieldUint(data_key="padding", required=True)
 
     @post_load
@@ -23,6 +26,7 @@ class ValuationPaddingSchema(JsonSchema):
 
 class ValuationAttributeSchema(JsonSchema):
     """Schema for variable fields."""
+
     name = fields.String(data_key="name", required=True)
     type = fields.String(
         data_key="type", required=True, validate=validate.OneOf(["bool", "int", "uint", "double", "rational", "string"])
@@ -53,9 +57,9 @@ class ValuationAttributeSchema(JsonSchema):
         )
 
 
-
 class ValuationFieldSchema(OneOfSchema):
     """Schema for valuation fields (padding or variable)."""
+
     type_schemas = {
         "padding": ValuationPaddingSchema,
         "attribute": ValuationAttributeSchema,
@@ -89,6 +93,7 @@ class ValuationFieldSchema(OneOfSchema):
 
 class VariableValuationsSchema(JsonSchema):
     """Schema for variable valuations."""
+
     alignment = FieldUint(data_key="alignment", required=True)
     variables = fields.List(fields.Nested(ValuationFieldSchema), data_key="variables", required=True)
 
@@ -99,7 +104,7 @@ class VariableValuationsSchema(JsonSchema):
             alignment=obj.alignment,
             fields=obj.variables,
         )
-    
+
     def dump(self, obj, *args, **kwargs):
         assert isinstance(obj, umbi.datatypes.StructType)
         obj_dict = {
@@ -107,4 +112,3 @@ class VariableValuationsSchema(JsonSchema):
             "variables": self.fields["variables"].serialize("variables", {"variables": obj.fields}),
         }
         return obj_dict
-

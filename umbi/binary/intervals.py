@@ -1,12 +1,13 @@
 """Utilities for (de)serializing intervals."""
 
-import umbi.datatypes
 from fractions import Fraction
 
+import umbi.datatypes
 from umbi.datatypes import CommonType, Interval, interval_base_type
 
 from .floats import bytes_to_double, double_to_bytes
 from .rationals import bytes_to_rational, num_bytes_for_rational, rational_to_bytes
+
 
 def interval_to_bytes(interval: Interval, type: CommonType, little_endian: bool = True) -> bytes:
     """Convert an Interval into a bytestring representation."""

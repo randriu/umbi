@@ -7,9 +7,9 @@ from fractions import Fraction
 from .integers import *
 from .utils import split_bytes
 
-
 # Convention: a normalized rational has a non-negative denominator.
 # Rationals are represented as two integers of equal lengths: a signed numerator and an unsigned denominator.
+
 
 def normalize_rational(value: Fraction) -> Fraction:
     """Ensure that the denominator of a fraction is non-negative."""
@@ -24,6 +24,7 @@ def num_bits_for_rational(value: Fraction) -> int:
     denominator_size = num_bits_for_integer(value.denominator, signed=False, round_up=False)
     total_size = max(numerator_size, denominator_size) * 2
     return total_size
+
 
 def num_bytes_for_rational(value: Fraction) -> int:
     """Calculate the number of bytes needed to represent a rational number."""

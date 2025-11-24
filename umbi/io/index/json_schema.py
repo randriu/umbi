@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 from marshmallow import (
     INCLUDE,
-    Schema, 
+    Schema,
     ValidationError,
     fields,
     post_load,
@@ -62,8 +62,9 @@ class JsonSchema(Schema):
         except ValidationError as e:
             logger.error(f"{cls} validation error:")
             # messages is actually a json object, so we can pretty print it
-            logger.error(umbi.datatypes.json_to_string(e.messages)) #type: ignore
+            logger.error(umbi.datatypes.json_to_string(e.messages))  # type: ignore
             raise e
+
 
 @dataclass
 class JsonSchemaResult(SimpleNamespace):
@@ -76,7 +77,7 @@ class JsonSchemaResult(SimpleNamespace):
     @classmethod
     def from_json(cls, json_obj):
         return cls.class_schema()().parse(json_obj)
-    
+
     def to_json(self):
         """Convert the current object to json and strip null values."""
         json_obj = self.class_schema()().dump(self)
