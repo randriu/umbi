@@ -1,4 +1,4 @@
-from umbi.datatypes import CommonType, StructType, NumericPrimitive, Interval
+from umbi.datatypes import CommonType, StructType, Numeric, Interval
 
 from dataclasses import dataclass, field
 from .model_info import ModelInfo
@@ -37,7 +37,7 @@ class ExplicitAts:
 
     markovian_states: list[int] | None = None
     exit_rate_type: CommonType | None = None
-    state_exit_rate: list[NumericPrimitive | Interval] | None = None
+    state_exit_rate: list[Numeric] | None = None
 
     num_actions: int = 1
     choice_to_action: list[int] | None = None
@@ -47,7 +47,7 @@ class ExplicitAts:
     choice_to_branch: list[int] | None = None
     branch_to_target: list[int] | None = None
     branch_probability_type: CommonType | None = None
-    branch_probabilities: list[NumericPrimitive | Interval] | None = None
+    branch_probabilities: list[Numeric] | None = None
 
     reward_annotations: dict[str, RewardAnnotation] = field(default_factory=dict)
     ap_annotations: dict[str, AtomicPropositionAnnotation] = field(default_factory=dict)
@@ -72,7 +72,7 @@ class ExplicitAts:
     def has_state_valuations(self) -> bool:
         return self.state_valuations is not None
 
-    def get_branch_probability(self, branch_id: int) -> NumericPrimitive | Interval:
+    def get_branch_probability(self, branch_id: int) -> Numeric:
         if self.branch_probabilities is not None:
             return self.branch_probabilities[branch_id]
         return 1.0

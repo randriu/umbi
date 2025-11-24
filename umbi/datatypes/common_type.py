@@ -5,9 +5,6 @@ Data types and type identifiers used throughout umbi. This module centralizes:
 3. Functions to check and assert type names and instances
 """
 
-from .json import is_json_instance
-
-from fractions import Fraction
 import enum
 
 class CommonType(str, enum.Enum):
@@ -35,33 +32,6 @@ class CommonType(str, enum.Enum):
     JSON = "json"
 
     STRUCT = "struct"
-
-""" Alias for primitive numeric types. """
-NumericPrimitive = int | float | Fraction
-
-def is_instance_of_common_type(value: object, type: CommonType) -> bool:
-    """Check if a value is an instance of the given common type."""
-    if type == CommonType.BOOLEAN:
-        return isinstance(value, bool)
-    elif is_integer_type(type):
-        return isinstance(value, int)
-    elif type == CommonType.DOUBLE:
-        return isinstance(value, float) or isinstance(value, int) # allow promotion from int to float
-    elif type == CommonType.RATIONAL:
-        return isinstance(value, Fraction)
-    elif is_interval_type(type):
-        from .interval import Interval
-        return isinstance(value, Interval)
-    elif type == CommonType.STRUCT:
-        from .struct import StructType
-        return isinstance(value, StructType)
-    elif type == CommonType.STRING:
-        return isinstance(value, str)
-    elif type == CommonType.JSON:
-        return is_json_instance(value)
-    else:
-        raise ValueError(f"unsupported common type: {type}")
-
 
 ### integers
 

@@ -1,5 +1,5 @@
 import umbi
-from umbi.datatypes import CommonType
+from umbi.datatypes import CommonType, vector_promotion_type, promote_to_vector_of_numeric
 import umbi.ats
 
 from .umb import ExplicitUmb, read_umb, write_umb
@@ -28,15 +28,18 @@ def umb_annotation_to_ats_annotation(umb_annotation: Annotation, applies_to_valu
 def ats_annotation_to_umb_annotation(annotation: umbi.ats.Annotation) -> tuple[Annotation, dict[str, list]]:
     applies_to = []
     applies_to_values = {}
-    if annotation.state_to_value is not None:
-        applies_to.append("states")
-        applies_to_values["states"] = annotation.state_to_value
-    if annotation.choice_to_value is not None:
-        applies_to.append("choices")
-        applies_to_values["choices"] = annotation.choice_to_value
-    if annotation.branch_to_value is not None:
-        applies_to.append("branches")
-        applies_to_values["branches"] = annotation.branch_to_value
+    target_type = annotation.type
+    for key,values in [
+        ("states", annotation.state_to_value),
+        ("choices", annotation.choice_to_value),
+        ("branches", annotation.branch_to_value)
+    ]:
+        if values is not None:
+            applies_to.append(key)
+            if target_type not in [CommonType.STRING, CommonType.BOOLEAN]:
+                # implicit promotion
+                values = promote_to_vector_of_numeric(values, target_type)
+            applies_to_values[key] = values
     umb_annotation = Annotation(
         alias=annotation.alias,
         description=annotation.description,
@@ -119,7 +122,7 @@ def explicit_umb_to_explicit_ats(umb: ExplicitUmb) -> umbi.ats.ExplicitAts:
     ats.choice_to_action = umb.choice_to_action
     ats.action_strings = umb.action_strings
 
-    ats.branch_to_target = umb.branch_to_target
+    ats.branch_to_target = umb.branch_to_target        
     ats.branch_probabilities = umb.branch_probabilities
 
     #TODO consolidate into one structure
@@ -164,8 +167,8 @@ def explicit_ats_to_explicit_umb(ats: umbi.ats.ExplicitAts) -> ExplicitUmb:
             num_actions = ats.num_actions,
             num_branches = ats.num_branches,
             num_observations = ats.num_observations,
-            branch_probability_type = ats.branch_probability_type.value if ats.branch_probability_type is not None else None, #type: ignore
-            exit_rate_type = ats.exit_rate_type.value if ats.exit_rate_type is not None else None, #type: ignore
+            branch_probability_type = None, # for now
+            exit_rate_type = None, # for now
         ),
         model_data=ModelData(
             name = ats.model_info.name,
@@ -191,14 +194,22 @@ def explicit_ats_to_explicit_umb(ats: umbi.ats.ExplicitAts) -> ExplicitUmb:
     umb.state_to_player = ats.state_to_player
 
     umb.markovian_states = ats.markovian_states
-    umb.state_exit_rate = ats.state_exit_rate
+    if ats.state_exit_rate is not None:
+        # implicit promotion
+        target_type = vector_promotion_type(ats.state_exit_rate)
+        umb.index.exit_rate_type = target_type.value
+        umb.state_exit_rate = promote_to_vector_of_numeric(ats.state_exit_rate, target_type)
 
     umb.choice_to_branch = ats.choice_to_branch
     umb.choice_to_action = ats.choice_to_action
     umb.action_strings = ats.action_strings
 
     umb.branch_to_target = ats.branch_to_target
-    umb.branch_probabilities = ats.branch_probabilities
+    if ats.branch_probabilities is not None:
+        # implicit promotion
+        target_type = vector_promotion_type(ats.branch_probabilities)
+        umb.index.branch_probability_type = target_type.value
+        umb.branch_probabilities = promote_to_vector_of_numeric(ats.branch_probabilities, target_type)
 
     umb.rewards = reward_values
     umb.aps = ap_values

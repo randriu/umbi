@@ -1,6 +1,6 @@
 import pytest
 
-from umbi.datatypes.csr import *
+from umbi.umbi.datatypes.vector import *
 
 
 def test_is_vector_csr_valid():

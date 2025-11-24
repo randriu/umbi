@@ -5,28 +5,23 @@ This package contains the fundamental datatype classes and definitions used thro
 including intervals, composite types, vector utilities, and JSON operations. Serialization operations remain in umbi.binary.
 """
 
-#TODO add variable valuation in addition to struct
 #TODO add vector?
 #TODO add CSR vector
 #TODO add vector of ranges (for CSR?)
 
 from .common_type import *
-from .interval import *
+from .interval import Interval
 from .struct import *
-from .csr import *
+from .vector import *
 from .json import *
+from .utils import *
 
 __all__ = [
 	# definitions.py
 	"CommonType",
-    "NumericPrimitive",
-	"Numeric",
-    "is_instance_of_common_type",
-
 	"is_fixed_size_integer_type",
 	"is_variable_size_integer_type",
 	"is_integer_type",
-	"assert_integer_type",
 
 	"is_interval_type",
 	"assert_interval_type",
@@ -40,14 +35,6 @@ __all__ = [
 	"StructAttribute",
 	"StructType",
 
-	# csr.py
-	"VectorType",
-    "CSR_TYPE",
-	"is_vector_ranges",
-	"is_vector_csr",
-	"csr_to_ranges",
-	"ranges_to_csr",
-
 	# json.py
 	"JsonPrimitive",
 	"JsonList",
@@ -57,4 +44,20 @@ __all__ = [
 	"json_remove_none_dict_values",
 	"json_to_string",
 	"string_to_json",
+    
+	# utils.py
+	"NumericPrimitive",
+	"Numeric",
+	"is_instance_of_common_type",
+	"promote_numeric_primitive",
+	"promote_numeric",
+
+	# vector.py
+	"VectorType",
+    "CSR_TYPE",
+    "assert_is_list",
+	"is_vector_of_common_type",
+	"is_vector_of_type",
+    "vector_promotion_type",
+	"promote_vector",
 ]

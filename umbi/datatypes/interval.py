@@ -2,12 +2,13 @@
 Interval datatype.
 """
 
-from .common_type import NumericPrimitive
+from fractions import Fraction
 
+NumericPrimitive = int | float | Fraction
 class Interval:
     """Represents a numeric interval where left <= right."""
     
-    def __init__(self, left: "NumericPrimitive", right: "NumericPrimitive") -> None:
+    def __init__(self, left: NumericPrimitive, right: NumericPrimitive) -> None:
         self.left = left
         self.right = right
         self.validate()
@@ -31,6 +32,3 @@ class Interval:
     def __contains__(self, value: NumericPrimitive) -> bool:
         """Check if a numeric value is within the interval."""
         return self.left <= value <= self.right
-
-""" Alias for all numeric types, including intervals. """
-Numeric = NumericPrimitive | Interval
