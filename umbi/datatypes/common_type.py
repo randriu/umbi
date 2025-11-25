@@ -86,11 +86,33 @@ def interval_base_type(type: CommonType) -> CommonType:
     }[type]
 
 
-# def is_numeric_type(type: CommonType) -> bool:
-#     """Check if the given common type is a numeric type (including intervals)."""
-#     return is_integer_type(type) or type in [
-#         CommonType.DOUBLE,
-#         CommonType.RATIONAL,
-#         CommonType.DOUBLE_INTERVAL,
-#         CommonType.RATIONAL_INTERVAL
-#     ]
+def is_numeric_type(type: CommonType) -> bool:
+    """Check if the given common type is a numeric type (including intervals)."""
+    return type in [
+        CommonType.INT,
+        CommonType.DOUBLE,
+        CommonType.RATIONAL,
+        CommonType.DOUBLE_INTERVAL,
+        CommonType.RATIONAL_INTERVAL,
+    ]
+
+
+def common_numeric_type(types: set[CommonType]) -> CommonType:
+    """Determine the common numeric type from a set of numeric types. Used for type promotion."""
+    if len(types) == 0:
+        raise ValueError("cannot determine common numeric type of empty set")
+    if any(not is_numeric_type(t) for t in types):
+        raise ValueError(f"non-numeric types found in set: {types}")
+    if CommonType.RATIONAL_INTERVAL in types:
+        return CommonType.RATIONAL_INTERVAL
+    elif CommonType.DOUBLE_INTERVAL in types:
+        if CommonType.RATIONAL in types:
+            return CommonType.RATIONAL_INTERVAL
+        else:
+            return CommonType.DOUBLE_INTERVAL
+    elif CommonType.RATIONAL in types:
+        return CommonType.RATIONAL
+    elif CommonType.DOUBLE in types:
+        return CommonType.DOUBLE
+    else:  # CommonType.INT in types
+        return CommonType.INT

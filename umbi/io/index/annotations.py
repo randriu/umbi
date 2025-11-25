@@ -5,7 +5,7 @@ Annotation schemas and classes.
 from dataclasses import dataclass
 from typing import Literal, Type
 
-from marshmallow import fields, post_load, validate
+from marshmallow import fields, validate
 
 from .json_schema import *
 
@@ -29,18 +29,9 @@ class AnnotationSchema(JsonSchema):
     lower = fields.Float(data_key="lower", required=False)
     upper = fields.Float(data_key="upper", required=False)
 
-    @post_load
-    def make_object(self, data: dict, **kwargs) -> "Annotation":
-        """Create an Annotation object from the deserialized data."""
-        obj = super().make_object(data, **kwargs)
-        return Annotation(
-            alias=obj.alias,
-            description=obj.description,
-            applies_to=obj.applies_to,
-            type=obj.type,
-            lower=obj.lower,
-            upper=obj.upper,
-        )
+    @classmethod
+    def schema_class(cls) -> Type:
+        return Annotation
 
 
 @dataclass
@@ -67,14 +58,9 @@ class AnnotationsSchema(JsonSchema):
     )
     aps = fields.Dict(keys=fields.String(), values=fields.Nested(AnnotationSchema), data_key="aps", required=False)
 
-    @post_load
-    def make_object(self, data: dict, **kwargs) -> "Annotations":
-        """Create an Annotations object from the deserialized data."""
-        obj = super().make_object(data, **kwargs)
-        return Annotations(
-            rewards=obj.rewards,
-            aps=obj.aps,
-        )
+    @classmethod
+    def schema_class(cls) -> type:
+        return Annotations
 
 
 @dataclass
@@ -83,6 +69,7 @@ class Annotations(JsonSchemaResult):
 
     rewards: dict[str, Annotation] | None = None
     aps: dict[str, Annotation] | None = None
+    observations: Annotation | None = None
 
     @classmethod
     def class_schema(cls) -> Type:

@@ -3,9 +3,8 @@ Model data schemas and classes.
 """
 
 from dataclasses import dataclass
-from typing import Type
 
-from marshmallow import fields, post_load
+from marshmallow import fields
 
 from .json_schema import *
 
@@ -19,18 +18,9 @@ class ModelDataSchema(JsonSchema):
     doi = fields.String(data_key="doi", required=False)
     url = fields.String(data_key="url", required=False)
 
-    @post_load
-    def make_object(self, data: dict, **kwargs) -> "ModelData":
-        obj = super().make_object(data, **kwargs)
-        return ModelData(
-            name=obj.name,
-            version=obj.version,
-            authors=obj.authors,
-            description=obj.description,
-            comment=obj.comment,
-            doi=obj.doi,
-            url=obj.url,
-        )
+    @classmethod
+    def schema_class(cls) -> type:
+        return ModelData
 
 
 @dataclass
@@ -44,5 +34,5 @@ class ModelData(JsonSchemaResult):
     url: str | None = None
 
     @classmethod
-    def class_schema(cls) -> Type:
+    def class_schema(cls) -> type:
         return ModelDataSchema

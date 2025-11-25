@@ -17,7 +17,6 @@ class ValuationPaddingSchema(JsonSchema):
 
     padding = FieldUint(data_key="padding", required=True)
 
-    @post_load
     def make_object(self, data: dict, **kwargs) -> umbi.datatypes.StructPadding:
         """Create a Padding object from the deserialized data."""
         obj = super().make_object(data, **kwargs)
@@ -40,12 +39,6 @@ class ValuationAttributeSchema(JsonSchema):
     def make_object(self, data: dict, **kwargs) -> umbi.datatypes.StructAttribute:
         """Validate and create a Variable object from the deserialized data."""
         obj = super().make_object(data, **kwargs)
-        # Check for unsupported fields
-        for field in ("lower", "upper", "offset"):
-            if getattr(obj, field, None) is not None:
-                raise NotImplementedError(
-                    f"feature not implemented: '{field}' must be omitted, but got {getattr(obj, field)}."
-                )
 
         return umbi.datatypes.StructAttribute(
             name=obj.name,

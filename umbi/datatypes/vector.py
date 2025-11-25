@@ -4,7 +4,7 @@ Auxiliary vector operations.
 
 from dataclasses import dataclass
 
-from .common_type import CommonType
+from .common_type import CommonType, common_numeric_type
 from .utils import (
     get_instance_type,
     is_instance_of_common_type,
@@ -59,31 +59,17 @@ def vector_element_type(vector: list) -> CommonType:
     return types.pop()
 
 
-def vector_promotion_type(vector: list) -> CommonType:
+def vector_common_numeric_type(vector: list) -> CommonType:
     """Determine the common type to which all elements in the vector can be promoted."""
     if len(vector) == 0:
         return CommonType.INT  # whatever
     types = vector_element_types(vector)
-    if CommonType.RATIONAL_INTERVAL in types:
-        return CommonType.RATIONAL_INTERVAL
-    elif CommonType.DOUBLE_INTERVAL in types:
-        if CommonType.RATIONAL in types:
-            return CommonType.RATIONAL_INTERVAL
-        else:
-            return CommonType.DOUBLE_INTERVAL
-    elif CommonType.RATIONAL in types:
-        return CommonType.RATIONAL
-    elif CommonType.DOUBLE in types:
-        return CommonType.DOUBLE
-    elif CommonType.INT in types:
-        return CommonType.INT
-    else:
-        raise ValueError(f"vector contains non-numeric types ({types}), cannot determine promotion type")
+    return common_numeric_type(types)
 
 
 def promote_vector(vector: list) -> list:
     """Promote a vector of numeric values to a common type."""
-    target_type = vector_promotion_type(vector)
+    target_type = vector_common_numeric_type(vector)
     return promote_to_vector_of_numeric(vector, target_type)
 
 

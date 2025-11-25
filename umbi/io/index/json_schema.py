@@ -39,17 +39,23 @@ class JsonSchema(Schema):
     class Meta:
         unknown = INCLUDE
 
+    @classmethod
+    def schema_class(cls) -> type:
+        """The class used as a representation of this schema result."""
+        return JsonSchemaResult
+
     @post_load
-    def make_object(self, data, **kwargs) -> SimpleNamespace:
+    def make_object(self, data, **kwargs):
         """Create an object with attributes matching all the json fields. Notify about unrecognized fields."""
         extra_fields = set(data.keys()) - set(self.fields.keys())
         for f in extra_fields:
             logger.warning(f"JSON contains unrecognized field: {f}")
 
+        obj = self.schema_class()()
         for field in self.fields:
-            if field not in data:
-                data[field] = None
-        return SimpleNamespace(**data)
+            value = data.get(field, None)
+            setattr(obj, field, value)
+        return obj
 
     @classmethod
     def parse(cls, json_data, *args, **kwargs):
@@ -57,8 +63,7 @@ class JsonSchema(Schema):
         :raises: ValidationError if the json object does not conform to the schema
         """
         try:
-            return cls().load(json_data, *args, **kwargs)  # type: ignore[return-value]
-            # ignoring the type since post_load will return JsonSchemaResult
+            return cls().load(json_data, *args, **kwargs)
         except ValidationError as e:
             logger.error(f"{cls} validation error:")
             # messages is actually a json object, so we can pretty print it
@@ -71,7 +76,7 @@ class JsonSchemaResult(SimpleNamespace):
 
     @classmethod
     def class_schema(cls) -> type:
-        """Get the schema class responsible for serialization of this class."""
+        """The schema responsible for serialization of this class."""
         return JsonSchema
 
     @classmethod
@@ -83,6 +88,10 @@ class JsonSchemaResult(SimpleNamespace):
         json_obj = self.class_schema()().dump(self)
         json_obj = umbi.datatypes.json_remove_none_dict_values(json_obj)
         return json_obj
+
+    def __str__(self) -> str:
+        """Convert to a string (json format)."""
+        return umbi.datatypes.json_to_string(self.to_json())
 
     def validate(self):
         """Validate the current object syntactically."""

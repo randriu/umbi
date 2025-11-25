@@ -3,7 +3,6 @@ File data schemas and classes.
 """
 
 from dataclasses import dataclass
-from typing import Type
 
 from marshmallow import fields, post_load
 
@@ -20,16 +19,9 @@ class FileDataSchema(JsonSchema):
     creation_date = FieldUint(data_key="creation-date", required=False)
     parameters = fields.Raw(data_key="parameters", required=False)
 
-    @post_load
-    def make_object(self, data: dict, **kwargs) -> "FileData":
-        """Create a FileData object from the deserialized data."""
-        obj = super().make_object(data, **kwargs)
-        return FileData(
-            tool=obj.tool,
-            tool_version=obj.tool_version,
-            creation_date=obj.creation_date,
-            parameters=obj.parameters,
-        )
+    @classmethod
+    def schema_class(cls) -> type:
+        return FileData
 
 
 @dataclass
@@ -42,5 +34,5 @@ class FileData(JsonSchemaResult):
     parameters: umbi.datatypes.JsonLike | None = None
 
     @classmethod
-    def class_schema(cls) -> Type:
+    def class_schema(cls) -> type:
         return FileDataSchema

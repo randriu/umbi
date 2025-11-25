@@ -4,6 +4,7 @@ Utilities for reading and writing umbfiles.
 
 import logging
 from dataclasses import dataclass, field
+from typing import no_type_check
 
 logger = logging.getLogger(__name__)
 
@@ -22,30 +23,39 @@ class UmbFile(Enum):
 
     INDEX_JSON = ("index.json", CommonType.JSON)
 
-    INITIAL_STATES = ("initial-states.bin", VectorType(CommonType.BOOLEAN))
+    STATE_IS_INITIAL = ("initial-states.bin", VectorType(CommonType.BOOLEAN))
     STATE_TO_CHOICE = ("state-to-choice.bin", CSR_TYPE)
     STATE_TO_PLAYER = ("state-to-player.bin", VectorType(CommonType.UINT32))
 
-    MARKOVIAN_STATES = ("markovian-states.bin", VectorType(CommonType.BOOLEAN))
-    STATE_TO_EXIT_RATE = ("state-to-exit-rate.bin", CSR_TYPE)
-    EXIT_RATES = ("exit-rates.bin", CommonType.BYTES)
+    STATE_IS_MARKOVIAN = ("markovian-states.bin", VectorType(CommonType.BOOLEAN))
+    STATE_TO_EXIT_RATE = ("exit-rates.bin", CommonType.BYTES)
+    STATE_TO_EXIT_RATE_CSR = ("state-to-exit-rate.bin", CSR_TYPE)
 
     CHOICE_TO_BRANCH = ("choice-to-branch.bin", CSR_TYPE)
-    CHOICE_TO_ACTION = ("choice-to-action.bin", VectorType(CommonType.UINT32))
-    ACTION_TO_ACTION_STRING = ("action-to-action-string.bin", CSR_TYPE)
-    ACTION_STRINGS = ("action-strings.bin", CommonType.BYTES)
-
     BRANCH_TO_TARGET = ("branch-to-target.bin", VectorType(CommonType.UINT64))
-    BRANCH_TO_PROBABILITY = ("branch-to-probability.bin", CSR_TYPE)
-    BRANCH_PROBABILITIES = ("branch-probabilities.bin", CommonType.BYTES)
+    BRANCH_TO_PROBABILITY = ("branch-probabilities.bin", CommonType.BYTES)
+    BRANCH_TO_PROBABILITY_CSR = ("branch-to-probability.bin", CSR_TYPE)
 
-    STATE_TO_VALUATION = ("state-to-valuation.bin", CSR_TYPE)
-    STATE_VALUATIONS = ("state-valuations.bin", CommonType.BYTES)
+    CHOICE_TO_ACTION = ("choice-to-choice-action.bin", VectorType(CommonType.UINT32))
+    ACTION_TO_STRING = ("choice-action-strings.bin", VectorType(CommonType.STRING))
+    ACTION_TO_STRING_CSR = ("choice-action-to-string.bin", CSR_TYPE)
+
+    BRANCH_TO_BRANCH_ACTION = ("branch-to-branch-action.bin", VectorType(CommonType.UINT32))
+    BRANCH_ACTION_TO_STRING = ("branch-action-strings.bin", VectorType(CommonType.STRING))
+    BRANCH_ACTION_TO_STRING_CSR = ("branch-action-to-string.bin", CSR_TYPE)
+
+    STATE_TO_VALUATION = ("state-valuations.bin", CommonType.BYTES)
+    STATE_TO_VALUATION_CSR = ("state-to-valuation.bin", CSR_TYPE)
+
+    # WIP
+    STATE_TO_OBSERVATION = ("state-to-observation.bin", VectorType(CommonType.UINT64))
+    CHOICE_TO_OBSERVATION = ("choice-to-observation.bin", VectorType(CommonType.UINT64))
+    BRANCH_TO_OBSERVATION = ("branch-to-observation.bin", VectorType(CommonType.UINT64))
 
 
 @dataclass
 class ExplicitUmb:
-    """Class for an explicit representation of a umbfile. The goal of this class is to have all the data is stored in numpy arrays and lists."""
+    """Class for an explicit representation of a umbfile. The goal of this class is to have all the data is stored in python lists, rather than binary formats."""
 
     index: UmbIndex = field(default_factory=UmbIndex)
 
@@ -54,18 +64,23 @@ class ExplicitUmb:
     state_to_player: list[int] | None = None
 
     state_is_markovian: list[bool] | None = None
-    state_exit_rate: list[Numeric] | None = None
+    state_to_exit_rate: list[Numeric] | None = None
 
     choice_to_branch: list[int] | None = None
-    choice_to_action: list[int] | None = None
-    action_strings: list[str] | None = None
-
     branch_to_target: list[int] | None = None
-    branch_probabilities: list[Numeric] | None = None
+    branch_to_probability: list[Numeric] | None = None
+
+    choice_to_action: list[int] | None = None
+    action_to_string: list[str] | None = None
+
+    branch_to_branch_action: list[int] | None = None
+    branch_action_to_string: list[str] | None = None
 
     rewards: dict[str, dict[str, list]] | None = None
     aps: dict[str, dict[str, list]] | None = None
-    state_valuations: list[dict] | None = None
+    item_to_observation: list[int] | None = None
+
+    state_to_valuation: list[dict] | None = None
 
     def validate(self):
         self.index.validate()
@@ -94,8 +109,17 @@ class UmbReader(TarReader):
         return self.read_filetype(filename, filetype, required)
 
     def read_common_csr(
-        self, file: UmbFile, value_type: CommonType, required: bool, file_csr: UmbFile, required_csr: bool = False
+        self,
+        file: UmbFile,
+        required: bool,
+        file_csr: UmbFile,
+        required_csr: bool = False,
+        value_type: CommonType | None = None,
     ):
+        if value_type is None:
+            _, filetype = file.value
+            assert isinstance(filetype, VectorType), "expected VectorType"
+            value_type = filetype.base_type
         filename, _ = file.value
         filename_csr, _ = file_csr.value
         return self.read_filetype_with_csr(filename, value_type, required, filename_csr, required_csr)
@@ -104,7 +128,6 @@ class UmbReader(TarReader):
         json_obj = self.read_common(file, required=True)
         pretty_str = umbi.datatypes.json_to_string(json_obj)
         logger.debug(f"loaded the following json:\n{pretty_str}")
-
         assert umbi.datatypes.is_json_instance(json_obj), "expected json object"
         idx = UmbIndex.from_json(json_obj)
         idx.validate()
@@ -146,62 +169,91 @@ class UmbReader(TarReader):
             name_applies_values[name] = self.read_annotation(label, name, annotation)
         return name_applies_values
 
-    def read_variable_valuations(self, state_valuations: StructType | None, num_states: int) -> list[dict] | None:
-        if state_valuations is None:
+    def read_observations(self, num_observations: int, observations_apply_to: str | None) -> list[int] | None:
+        if num_observations == 0:
             return None
-        chunks_csr = self.read_common(UmbFile.STATE_TO_VALUATION, required=False)
+        if observations_apply_to is None:
+            raise ValueError("observations_applies_to is required when #num_observations > 0")
+        file = {
+            "states": UmbFile.STATE_TO_OBSERVATION,
+            "choices": UmbFile.CHOICE_TO_OBSERVATION,
+            "branches": UmbFile.BRANCH_TO_OBSERVATION,
+        }[observations_apply_to]
+        return self.read_common(file, required=True)
+
+    def read_variable_valuations(
+        self, variable_valuations: StructType, num_entries: int, file: UmbFile, file_csr: UmbFile
+    ) -> list[dict]:
+        chunks_csr = self.read_common(file_csr, required=False)
         if chunks_csr is None:
-            chunks_csr = [s for s in range(num_states + 1)]
-        chunks_csr = [x * state_valuations.alignment for x in chunks_csr]
-        valuations = self.read_common(UmbFile.STATE_VALUATIONS, required=True)
+            chunks_csr = list(range(num_entries + 1))
+        chunks_csr = [x * variable_valuations.alignment for x in chunks_csr]
+        valuations = self.read_common(file, required=True)
         assert isinstance(valuations, bytes)
         # assert len(valuations) == (chunks_csr[-1]), "state valuations data length does not match expected size"
         ranges = umbi.datatypes.csr_to_ranges(chunks_csr)
-        return umbi.binary.bytes_to_vector(valuations, state_valuations, ranges)
+        return umbi.binary.bytes_to_vector(valuations, variable_valuations, ranges)
 
-    # @no_type_check
+    @no_type_check
     def read_umb(self):  # type: ignore
         logger.info(f"loading umbfile from {self.tarpath} ...")
         umb = ExplicitUmb()
 
         umb.index = self.read_json(UmbFile.INDEX_JSON)
+        ts = umb.index.transition_system
 
-        umb.state_is_initial = self.read_common(UmbFile.INITIAL_STATES, required=True)
+        umb.state_is_initial = self.read_common(UmbFile.STATE_IS_INITIAL, required=True)
         umb.state_to_choice = self.read_common(UmbFile.STATE_TO_CHOICE)
         umb.state_to_player = self.read_common(UmbFile.STATE_TO_PLAYER)
 
-        umb.state_is_markovian = self.read_common(UmbFile.MARKOVIAN_STATES)
+        umb.state_is_markovian = self.read_common(UmbFile.STATE_IS_MARKOVIAN)
         if umb.index.transition_system.exit_rate_type is not None:
-            umb.state_exit_rate = self.read_common_csr(
-                UmbFile.EXIT_RATES,
-                CommonType(umb.index.transition_system.exit_rate_type),
-                False,
+            umb.state_to_exit_rate = self.read_common_csr(
                 UmbFile.STATE_TO_EXIT_RATE,
-                False,
+                required=False,
+                file_csr=UmbFile.STATE_TO_EXIT_RATE_CSR,
+                required_csr=False,
+                value_type=CommonType(umb.index.transition_system.exit_rate_type),
             )
 
         umb.choice_to_branch = self.read_common(UmbFile.CHOICE_TO_BRANCH)
-        umb.choice_to_action = self.read_common(UmbFile.CHOICE_TO_ACTION)
-        umb.action_strings = self.read_common_csr(
-            UmbFile.ACTION_STRINGS, CommonType.STRING, False, UmbFile.ACTION_TO_ACTION_STRING, True
-        )
-
         umb.branch_to_target = self.read_common(UmbFile.BRANCH_TO_TARGET)
         if umb.index.transition_system.branch_probability_type is not None:
-            umb.branch_probabilities = self.read_common_csr(
-                UmbFile.BRANCH_PROBABILITIES,
-                CommonType(umb.index.transition_system.branch_probability_type),
-                False,
+            umb.branch_to_probability = self.read_common_csr(
                 UmbFile.BRANCH_TO_PROBABILITY,
-                False,
+                required=False,
+                file_csr=UmbFile.BRANCH_TO_PROBABILITY_CSR,
+                required_csr=False,
+                value_type=CommonType(umb.index.transition_system.branch_probability_type),
             )
+
+        umb.choice_to_action = self.read_common(UmbFile.CHOICE_TO_ACTION)
+        umb.action_to_string = self.read_common_csr(
+            UmbFile.ACTION_TO_STRING,
+            required=False,
+            file_csr=UmbFile.ACTION_TO_STRING_CSR,
+            required_csr=True,
+        )
+
+        umb.branch_to_branch_action = self.read_common(UmbFile.BRANCH_TO_BRANCH_ACTION)
+        umb.branch_action_to_string = self.read_common_csr(
+            UmbFile.BRANCH_ACTION_TO_STRING,
+            required=False,
+            file_csr=UmbFile.BRANCH_ACTION_TO_STRING_CSR,
+            required_csr=True,
+        )
 
         if umb.index.annotations is not None:
             umb.rewards = self.read_annotations("rewards", umb.index.annotations.rewards)
             umb.aps = self.read_annotations("aps", umb.index.annotations.aps)
-        umb.state_valuations = self.read_variable_valuations(
-            umb.index.state_valuations, umb.index.transition_system.num_states
-        )
+        if umb.index.state_valuations is not None:
+            umb.state_to_valuation = self.read_variable_valuations(
+                umb.index.state_valuations,
+                num_entries=umb.index.transition_system.num_states,
+                file=UmbFile.STATE_TO_VALUATION,
+                file_csr=UmbFile.STATE_TO_VALUATION_CSR,
+            )
+        umb.item_to_observation = self.read_observations(ts.num_observations, ts.observations_apply_to)
 
         self.list_unread_files()
         logger.info(f"finished loading the umbfile")
@@ -214,7 +266,13 @@ class UmbWriter(TarWriter):
         filename, filetype = file.value
         self.add_filetype(filename, filetype, data, required=required)
 
-    def add_common_csr(self, file: UmbFile, data, value_type: CommonType, file_csr: UmbFile, required: bool = False):
+    def add_common_csr(
+        self, file: UmbFile, data, file_csr: UmbFile, required: bool = False, value_type: CommonType | None = None
+    ):
+        if value_type is None:
+            _, filetype = file.value
+            assert isinstance(filetype, VectorType), "expected VectorType"
+            value_type = filetype.base_type
         filename, _ = file.value
         filename_csr, _ = file_csr.value
         self.add_filetype_with_csr(filename, value_type, data, required, filename_csr)
@@ -256,48 +314,73 @@ class UmbWriter(TarWriter):
             assert name in annotation_values, f"missing values for annotation {name}"
             self.add_annotation(label, name, annotation, annotation_values[name])
 
-    def add_variable_valuations(self, valuation_type: StructType | None, state_valuations: list[dict] | None):
-        if valuation_type is None:
+    def add_observations(self, apply_to: str | None, item_to_observation: list[int] | None):
+        if apply_to is None:
             return
-        assert state_valuations is not None
-        bytestring, ranges = umbi.binary.vector_to_bytes(state_valuations, valuation_type)
-        assert ranges is not None
-        self.add_common(UmbFile.STATE_VALUATIONS, bytestring)
-        ranges = [x // valuation_type.alignment for x in ranges]
-        self.add_common(UmbFile.STATE_TO_VALUATION, ranges)
+        if item_to_observation is None:
+            raise ValueError("item_to_observation is required when apply_to is specified")
+        file = {
+            "states": UmbFile.STATE_TO_OBSERVATION,
+            "choices": UmbFile.CHOICE_TO_OBSERVATION,
+            "branches": UmbFile.BRANCH_TO_OBSERVATION,
+        }[apply_to]
+        self.add_common(file, item_to_observation, required=True)
+
+    def add_variable_valuations(
+        self, valuation_type: StructType, variable_valuations: list[dict], file: UmbFile, file_csr: UmbFile
+    ):
+        bytestring, chunk_ranges = umbi.binary.vector_to_bytes(variable_valuations, valuation_type)
+        assert chunk_ranges is not None
+        self.add_common(file, bytestring)
+        chunk_ranges = [x // valuation_type.alignment for x in chunk_ranges]
+        self.add_common(file_csr, chunk_ranges)
 
     def write_umb(self, umb: ExplicitUmb, umbpath: str):
         logger.info(f"writing umbfile to {umbpath} ...")
         self.add_index(UmbFile.INDEX_JSON, umb.index)
 
-        self.add_common(UmbFile.INITIAL_STATES, umb.state_is_initial, required=True)
+        self.add_common(UmbFile.STATE_IS_INITIAL, umb.state_is_initial, required=True)
         self.add_common(UmbFile.STATE_TO_CHOICE, umb.state_to_choice)
         self.add_common(UmbFile.STATE_TO_PLAYER, umb.state_to_player)
-        self.add_common(UmbFile.MARKOVIAN_STATES, umb.state_is_markovian)
+
+        self.add_common(UmbFile.STATE_IS_MARKOVIAN, umb.state_is_markovian)
         if umb.index.transition_system.exit_rate_type is not None:
             self.add_common_csr(
-                UmbFile.EXIT_RATES,
-                umb.state_exit_rate,
-                CommonType(umb.index.transition_system.exit_rate_type),
                 UmbFile.STATE_TO_EXIT_RATE,
+                umb.state_to_exit_rate,
+                file_csr=UmbFile.STATE_TO_EXIT_RATE_CSR,
+                value_type=CommonType(umb.index.transition_system.exit_rate_type),
             )
+
         self.add_common(UmbFile.CHOICE_TO_BRANCH, umb.choice_to_branch)
-        self.add_common(UmbFile.CHOICE_TO_ACTION, umb.choice_to_action)
-        self.add_common_csr(
-            UmbFile.ACTION_STRINGS, umb.action_strings, CommonType.STRING, UmbFile.ACTION_TO_ACTION_STRING
-        )
         self.add_common(UmbFile.BRANCH_TO_TARGET, umb.branch_to_target)
         if umb.index.transition_system.branch_probability_type is not None:
             self.add_common_csr(
-                UmbFile.BRANCH_PROBABILITIES,
-                umb.branch_probabilities,
-                CommonType(umb.index.transition_system.branch_probability_type),
                 UmbFile.BRANCH_TO_PROBABILITY,
+                umb.branch_to_probability,
+                file_csr=UmbFile.BRANCH_TO_PROBABILITY_CSR,
+                value_type=CommonType(umb.index.transition_system.branch_probability_type),
             )
+
+        self.add_common(UmbFile.CHOICE_TO_ACTION, umb.choice_to_action)
+        self.add_common_csr(UmbFile.ACTION_TO_STRING, umb.action_to_string, UmbFile.ACTION_TO_STRING_CSR)
+        self.add_common(UmbFile.BRANCH_TO_BRANCH_ACTION, umb.branch_to_branch_action)
+        self.add_common_csr(
+            UmbFile.BRANCH_ACTION_TO_STRING, umb.branch_action_to_string, UmbFile.BRANCH_ACTION_TO_STRING_CSR
+        )
+
         if umb.index.annotations is not None:
             self.add_annotations("rewards", umb.index.annotations.rewards, umb.rewards)
             self.add_annotations("aps", umb.index.annotations.aps, umb.aps)
-        self.add_variable_valuations(umb.index.state_valuations, umb.state_valuations)
+        if umb.index.state_valuations is not None:
+            assert umb.state_to_valuation is not None
+            self.add_variable_valuations(
+                umb.index.state_valuations,
+                umb.state_to_valuation,
+                file=UmbFile.STATE_TO_VALUATION,
+                file_csr=UmbFile.STATE_TO_VALUATION_CSR,
+            )
+        self.add_observations(umb.index.transition_system.observations_apply_to, umb.item_to_observation)
         self.write(umbpath)
         logger.info(f"finished writing the umbfile")
 

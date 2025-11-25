@@ -4,11 +4,12 @@ Interval datatype.
 
 from fractions import Fraction
 
-NumericPrimitive = int | float | Fraction
-
 
 class Interval:
     """Represents a numeric interval where left <= right."""
+
+    # a re-declaration of NumericPrimitive from utils.py to avoid circular import issues
+    NumericPrimitive = int | float | Fraction
 
     def __init__(self, left: NumericPrimitive, right: NumericPrimitive) -> None:
         self.left = left
@@ -16,6 +17,8 @@ class Interval:
         self.validate()
 
     def validate(self) -> None:
+        from .utils import NumericPrimitive
+
         if not isinstance(self.left, NumericPrimitive):
             raise ValueError(f"expected numeric left bound, got: {self.left}")
         if not isinstance(self.right, NumericPrimitive):

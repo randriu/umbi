@@ -13,7 +13,7 @@ from .utils import *
 from .vector import *
 
 __all__ = [
-    # definitions.py
+    # common_type.py
     "CommonType",
     "is_fixed_size_integer_type",
     "is_variable_size_integer_type",
@@ -21,6 +21,7 @@ __all__ = [
     "is_interval_type",
     "assert_interval_type",
     "interval_base_type",
+    "is_numeric_type",
     # interval.py
     "Interval",
     # struct.py
@@ -48,6 +49,6 @@ __all__ = [
     "assert_is_list",
     "is_vector_of_common_type",
     "is_vector_of_type",
-    "vector_promotion_type",
+    "vector_common_numeric_type",
     "promote_vector",
 ]

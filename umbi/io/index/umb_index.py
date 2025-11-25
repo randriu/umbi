@@ -3,11 +3,8 @@ Main UMB index class and schema.
 """
 
 from dataclasses import dataclass, field
-from typing import Type
 
-from marshmallow import fields, post_load
-
-import umbi.datatypes
+from marshmallow import fields
 
 from .annotations import Annotations, AnnotationsSchema
 from .file_data import FileData, FileDataSchema
@@ -28,19 +25,9 @@ class UmbIndexSchema(JsonSchema):
     annotations = fields.Nested(AnnotationsSchema, data_key="annotations", required=False)
     state_valuations = fields.Nested(VariableValuationsSchema, data_key="state-valuations", required=False)
 
-    @post_load
-    def make_object(self, data: dict, **kwargs) -> "UmbIndex":
-        """Create an UmbIndex object from the deserialized data."""
-        obj = super().make_object(data, **kwargs)
-        return UmbIndex(
-            format_version=obj.format_version,
-            format_revision=obj.format_revision,
-            model_data=getattr(obj, "model_data", None),
-            file_data=getattr(obj, "file_data", None),
-            transition_system=obj.transition_system,
-            annotations=getattr(obj, "annotations", None),
-            state_valuations=getattr(obj, "state_valuations", None),
-        )
+    @classmethod
+    def schema_class(cls) -> type:
+        return UmbIndex
 
 
 @dataclass
@@ -55,9 +42,5 @@ class UmbIndex(JsonSchemaResult):
     state_valuations: umbi.datatypes.StructType | None = None
 
     @classmethod
-    def class_schema(cls) -> Type:
+    def class_schema(cls) -> type:
         return UmbIndexSchema
-
-    def __str__(self) -> str:
-        """Convert to a string (json format)."""
-        return umbi.datatypes.json_to_string(self.to_json())
