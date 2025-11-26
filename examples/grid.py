@@ -29,7 +29,7 @@ def ats_from_grid_string(grid: str) -> umbi.ats.ExplicitAts:
     # Create ATS
     ats = umbi.ats.ExplicitAts()
     ats.time = umbi.ats.TimeType.DISCRETE
-    ats.num_players = 0
+    ats.num_players = 1
 
     cell_to_state = {}
     initial_states = set()
