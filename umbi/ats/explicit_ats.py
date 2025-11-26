@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Iterable
@@ -12,6 +13,8 @@ from umbi.datatypes import (
 
 from .annotation import *
 from .model_info import ModelInfo
+
+logger = logging.getLogger(__name__)
 
 
 class TimeType(str, Enum):
@@ -68,21 +71,24 @@ class ExplicitAts:
     state_valuations: StructType | None = None
     state_valuations_values: list[dict] | None = None
 
-    def __eq__(self, other):
-        # TODO implement
+    def equal(self, other: object, debug=False) -> bool:
         if not isinstance(other, ExplicitAts):
+            if debug:
+                logger.debug("ExplicitAts.__eq__: other is not an ExplicitAts")
             return False
-        if self.time != other.time:
-            return False
-        if self.num_players != other.num_players:
-            return False
-        if self.state_to_player != other.state_to_player:
-            return False
-        if self.num_states != other.num_states:
-            return False
-        if self.num_actions != other.num_actions:
-            return False
-        return True
+        equal = True
+        for field_name in self.__dataclass_fields__:
+            if getattr(self, field_name) != getattr(other, field_name):
+                equal = False
+                if not debug:
+                    break
+                logger.debug(f"ExplicitAts.__eq__: field {field_name} differs")
+                logger.debug(f"  self: {getattr(self, field_name)}")
+                logger.debug(f"  other: {getattr(other, field_name)}")
+        return equal
+
+    def __eq__(self, other):
+        return self.equal(other)
 
     @property
     def initial_states(self) -> list[int]:
@@ -210,6 +216,8 @@ class ExplicitAts:
             if len(self.state_to_player) != self.num_states:
                 raise ValueError("expected len(state_to_player) == num_states")
 
+        if len(self.state_is_initial) != self.num_states:
+            raise ValueError("expected len(state_is_initial) == num_states")
         if self.num_initial_states != len(self.initial_states):
             raise ValueError("expected num_initial_states == len(initial_states)")
 

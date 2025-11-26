@@ -43,6 +43,18 @@ class Annotation:
     def name(self) -> str:
         return self._name
 
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Annotation):
+            return False
+        return (
+            self.name == other.name
+            and self.alias == other.alias
+            and self.description == other.description
+            and self.state_to_value == other.state_to_value
+            and self.choice_to_value == other.choice_to_value
+            and self.branch_to_value == other.branch_to_value
+        )
+
     @property
     def type(self) -> CommonType:
         types: set[CommonType] = set()

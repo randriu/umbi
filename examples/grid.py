@@ -21,7 +21,9 @@ def ats_from_grid_string(grid: str) -> umbi.ats.ExplicitAts:
     :return: An ExplicitAts object.
     """
     # parse the grid into a 2D array
-    parsed_grid = [list(row.strip()) for row in grid.strip().split("\n")]
+    parsed_grid = [
+        list(row.strip()) for row in reversed(grid.strip().split("\n"))
+    ]  # reverse to have (0,0) at bottom left
     rows, cols = len(parsed_grid), len(parsed_grid[0])
     if any(len(row) != cols for row in parsed_grid):
         raise ValueError("The grid must be rectangular (all rows must have the same length).")
@@ -50,11 +52,11 @@ def ats_from_grid_string(grid: str) -> umbi.ats.ExplicitAts:
     ats.num_states = len(cell_to_state)
     ats.set_initial_states(list(initial_states))
 
-    directions = {
-        "up": (-1, 0),
-        "down": (1, 0),
-        "left": (0, -1),
-        "right": (0, 1),
+    direction_dxdy = {
+        "up": (0, 1),
+        "down": (0, -1),
+        "left": (-1, 0),
+        "right": (1, 0),
     }
 
     ats.state_to_choice = []
@@ -62,15 +64,15 @@ def ats_from_grid_string(grid: str) -> umbi.ats.ExplicitAts:
     ats.branch_to_target = []
     ats.branch_probabilities = []
     ats.choice_to_action = []
-    ats.action_strings = list(directions.keys())
+    ats.action_strings = list(direction_dxdy.keys())
     ats.num_actions = len(ats.action_strings)
 
     for (x, y), state in cell_to_state.items():
         ats.state_to_choice.append(len(ats.choice_to_action))
 
-        for action, (dx, dy) in directions.items():
+        for direction, (dx, dy) in direction_dxdy.items():
             target = (x + dx, y + dy)
-            ats.choice_to_action.append(ats.action_strings.index(action))
+            ats.choice_to_action.append(ats.action_strings.index(direction))
             ats.choice_to_branch.append(len(ats.branch_to_target))
 
             if target in cell_to_state:
@@ -99,7 +101,8 @@ def ats_from_grid_string(grid: str) -> umbi.ats.ExplicitAts:
 
 
 def main():
-    umbi.setup_logging()
+    # import logging
+    # umbi.setup_logging(level=logging.DEBUG)
 
     grid = """
     ....x..g
@@ -108,20 +111,19 @@ def main():
     ...x.x..
     ..xxxx..
     """
+    filename = "grid.umb"
     ats = ats_from_grid_string(grid)
     print(f"Created ATS with {ats.num_states} states and {ats.num_choices} choices.")
 
-    filename = "grid.umb"
-
-    # write to file
+    # write to file and read back
     umbi.io.write_ats(ats, filename)
-
-    # read back
     ats_loaded = umbi.io.read_ats(filename)
     print(f"Loaded ATS having {ats_loaded.num_states} states and {ats_loaded.num_choices} choices")
 
     # simple equality check using __eq__
-    assert ats == ats_loaded
+    if not ats == ats_loaded:
+        print("ATS objects differ!")
+        ats.equal(ats_loaded, debug=True)
 
 
 if __name__ == "__main__":

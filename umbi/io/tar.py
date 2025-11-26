@@ -5,7 +5,7 @@ Utilities for reading/wrting Tar archives.
 import io as std_io
 import logging
 
-from umbi.datatypes import CSR_TYPE, CommonType, VectorType
+from umbi.datatypes import VECTOR_TYPE_CSR, CommonType, VectorType
 
 logger = logging.getLogger(__name__)
 import tarfile
@@ -70,8 +70,8 @@ class TarReader:
             return data
         if filetype == CommonType.JSON:
             return umbi.binary.bytes_to_common_value(data, CommonType.JSON)
-        # if filetype == CSR_TYPE:
-        #     return umbi.binary.bytes_to_vector(data, CSR_TYPE.base_type)
+        # if filetype == VECTOR_TYPE_CSR:
+        #     return umbi.binary.bytes_to_vector(data, VECTOR_TYPE_CSR.base_type)
         if isinstance(filetype, VectorType):
             return umbi.binary.bytes_to_vector(data, filetype.base_type)
         else:
@@ -91,7 +91,7 @@ class TarReader:
         data = self.read_file(filename, required)
         if data is None:
             return None
-        chunk_ranges = self.read_filetype(filename_csr, CSR_TYPE, required=required_csr)
+        chunk_ranges = self.read_filetype(filename_csr, VECTOR_TYPE_CSR, required=required_csr)
         if chunk_ranges is not None:
             assert isinstance(chunk_ranges, list)
             chunk_ranges = umbi.datatypes.csr_to_ranges(chunk_ranges)
@@ -162,7 +162,7 @@ class TarWriter:
         data_out, chunk_csr = umbi.binary.vector_to_bytes(data, value_type)
         self.add_file(filename, data_out)
         if chunk_csr is not None:
-            self.add_filetype(filename_csr, CSR_TYPE, chunk_csr, required=True)
+            self.add_filetype(filename_csr, VECTOR_TYPE_CSR, chunk_csr, required=True)
         else:
             logger.debug(f"skipping CSR file {filename_csr}")
 

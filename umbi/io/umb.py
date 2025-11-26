@@ -12,7 +12,14 @@ from enum import Enum
 
 import umbi.binary
 import umbi.datatypes
-from umbi.datatypes import CSR_TYPE, CommonType, Numeric, StructType, VectorType
+from umbi.datatypes import (
+    VECTOR_TYPE_BITVECTOR,
+    VECTOR_TYPE_CSR,
+    CommonType,
+    Numeric,
+    StructType,
+    VectorType,
+)
 
 from .index import Annotation, UmbIndex
 from .tar import TarReader, TarWriter
@@ -23,29 +30,29 @@ class UmbFile(Enum):
 
     INDEX_JSON = ("index.json", CommonType.JSON)
 
-    STATE_IS_INITIAL = ("initial-states.bin", VectorType(CommonType.BOOLEAN))
-    STATE_TO_CHOICE = ("state-to-choice.bin", CSR_TYPE)
+    STATE_IS_INITIAL = ("initial-states.bin", VECTOR_TYPE_BITVECTOR)
+    STATE_TO_CHOICE = ("state-to-choice.bin", VECTOR_TYPE_CSR)
     STATE_TO_PLAYER = ("state-to-player.bin", VectorType(CommonType.UINT32))
 
-    STATE_IS_MARKOVIAN = ("markovian-states.bin", VectorType(CommonType.BOOLEAN))
+    STATE_IS_MARKOVIAN = ("markovian-states.bin", VECTOR_TYPE_BITVECTOR)
     STATE_TO_EXIT_RATE = ("exit-rates.bin", CommonType.BYTES)
-    STATE_TO_EXIT_RATE_CSR = ("state-to-exit-rate.bin", CSR_TYPE)
+    STATE_TO_EXIT_RATE_CSR = ("state-to-exit-rate.bin", VECTOR_TYPE_CSR)
 
-    CHOICE_TO_BRANCH = ("choice-to-branch.bin", CSR_TYPE)
+    CHOICE_TO_BRANCH = ("choice-to-branch.bin", VECTOR_TYPE_CSR)
     BRANCH_TO_TARGET = ("branch-to-target.bin", VectorType(CommonType.UINT64))
     BRANCH_TO_PROBABILITY = ("branch-probabilities.bin", CommonType.BYTES)
-    BRANCH_TO_PROBABILITY_CSR = ("branch-to-probability.bin", CSR_TYPE)
+    BRANCH_TO_PROBABILITY_CSR = ("branch-to-probability.bin", VECTOR_TYPE_CSR)
 
     CHOICE_TO_ACTION = ("choice-to-choice-action.bin", VectorType(CommonType.UINT32))
     ACTION_TO_STRING = ("choice-action-strings.bin", VectorType(CommonType.STRING))
-    ACTION_TO_STRING_CSR = ("choice-action-to-string.bin", CSR_TYPE)
+    ACTION_TO_STRING_CSR = ("choice-action-to-string.bin", VECTOR_TYPE_CSR)
 
     BRANCH_TO_BRANCH_ACTION = ("branch-to-branch-action.bin", VectorType(CommonType.UINT32))
     BRANCH_ACTION_TO_STRING = ("branch-action-strings.bin", VectorType(CommonType.STRING))
-    BRANCH_ACTION_TO_STRING_CSR = ("branch-action-to-string.bin", CSR_TYPE)
+    BRANCH_ACTION_TO_STRING_CSR = ("branch-action-to-string.bin", VECTOR_TYPE_CSR)
 
     STATE_TO_VALUATION = ("state-valuations.bin", CommonType.BYTES)
-    STATE_TO_VALUATION_CSR = ("state-to-valuation.bin", CSR_TYPE)
+    STATE_TO_VALUATION_CSR = ("state-to-valuation.bin", VECTOR_TYPE_CSR)
 
     # WIP
     STATE_TO_OBSERVATION = ("state-to-observation.bin", VectorType(CommonType.UINT64))
@@ -108,6 +115,18 @@ class UmbReader(TarReader):
         filename, filetype = file.value
         return self.read_filetype(filename, filetype, required)
 
+    def truncate_bitvector(self, vector: list[bool], num_entries: int) -> list[bool]:
+        if not len(vector) >= num_entries:
+            logger.error(f"bitvector length {len(vector)} is shorter than expected {num_entries}")
+        return vector[:num_entries]
+
+    def read_common_bitvector(self, file: UmbFile, num_entries: int, required: bool = False) -> list[bool] | None:
+        vector = self.read_common(file, required)
+        if vector is None:
+            return None
+        assert isinstance(vector, list)
+        return self.truncate_bitvector(vector, num_entries)
+
     def read_common_csr(
         self,
         file: UmbFile,
@@ -133,7 +152,7 @@ class UmbReader(TarReader):
         idx.validate()
         return idx
 
-    def read_annotation(self, label: str, name: str, annotation: Annotation) -> dict[str, list]:
+    def read_annotation(self, label: str, name: str, annotation: Annotation, index: UmbIndex) -> dict[str, list]:
         """
         Read annotation files for a single annotation.
         :param label: annotation label, usually one of ["rewards","aps"]
@@ -149,12 +168,19 @@ class UmbReader(TarReader):
             vector = self.read_filetype_with_csr(
                 f"{path}/values.bin", annotation_type, required=True, filename_csr=f"{path}/to-values.bin"
             )
-            assert vector is not None
+            assert isinstance(vector, list)
+            if annotation_type == CommonType.BOOLEAN:
+                num_entries = {
+                    "states": index.transition_system.num_states,
+                    "choices": index.transition_system.num_choices,
+                    "branches": index.transition_system.num_branches,
+                }[applies]
+                vector = self.truncate_bitvector(vector, num_entries=num_entries)
             applies_values[applies] = vector
         return applies_values
 
     def read_annotations(
-        self, label: str, annotation_info: dict[str, Annotation] | None
+        self, label: str, annotation_info: dict[str, Annotation] | None, index: UmbIndex
     ) -> dict[str, dict[str, list]] | None:
         """
         Read annotation files for all annotations in annotation_info.
@@ -166,7 +192,7 @@ class UmbReader(TarReader):
             return None
         name_applies_values = dict()
         for name, annotation in annotation_info.items():
-            name_applies_values[name] = self.read_annotation(label, name, annotation)
+            name_applies_values[name] = self.read_annotation(label, name, annotation, index)
         return name_applies_values
 
     def read_observations(self, num_observations: int, observations_apply_to: str | None) -> list[int] | None:
@@ -202,11 +228,11 @@ class UmbReader(TarReader):
         umb.index = self.read_json(UmbFile.INDEX_JSON)
         ts = umb.index.transition_system
 
-        umb.state_is_initial = self.read_common(UmbFile.STATE_IS_INITIAL, required=True)
+        umb.state_is_initial = self.read_common_bitvector(UmbFile.STATE_IS_INITIAL, ts.num_states, required=True)
         umb.state_to_choice = self.read_common(UmbFile.STATE_TO_CHOICE)
         umb.state_to_player = self.read_common(UmbFile.STATE_TO_PLAYER)
 
-        umb.state_is_markovian = self.read_common(UmbFile.STATE_IS_MARKOVIAN)
+        umb.state_is_markovian = self.read_common_bitvector(UmbFile.STATE_IS_MARKOVIAN, ts.num_states, required=False)
         if umb.index.transition_system.exit_rate_type is not None:
             umb.state_to_exit_rate = self.read_common_csr(
                 UmbFile.STATE_TO_EXIT_RATE,
@@ -244,8 +270,8 @@ class UmbReader(TarReader):
         )
 
         if umb.index.annotations is not None:
-            umb.rewards = self.read_annotations("rewards", umb.index.annotations.rewards)
-            umb.aps = self.read_annotations("aps", umb.index.annotations.aps)
+            umb.rewards = self.read_annotations("rewards", umb.index.annotations.rewards, umb.index)
+            umb.aps = self.read_annotations("aps", umb.index.annotations.aps, umb.index)
         if umb.index.state_valuations is not None:
             umb.state_to_valuation = self.read_variable_valuations(
                 umb.index.state_valuations,

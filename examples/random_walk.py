@@ -53,6 +53,9 @@ def random_walk_ats(num_states: int) -> umbi.ats.ExplicitAts:
     ats.state_to_choice.append(len(ats.choice_to_action))
     ats.choice_to_branch.append(len(ats.branch_to_target))
 
+    ats.state_is_markovian = [True] * ats.num_states
+    ats.state_exit_rate = [1] * ats.num_states
+
     print(f"branch_probability_type = {ats.branch_probability_type}")
 
     # example: APs
@@ -121,20 +124,22 @@ def random_walk_ats(num_states: int) -> umbi.ats.ExplicitAts:
 
 
 def main():
-    umbi.setup_logging()
-    ats = random_walk_ats(num_states=10)
+    # import logging
+    # umbi.setup_logging(level=logging.DEBUG)
+
     filename = "random_walk.umb"
+    ats = random_walk_ats(num_states=10)
+    print(f"Created ATS with {ats.num_states} states and {ats.num_choices} choices.")
 
-    # write to file
+    # write to file and read back
     umbi.io.write_ats(ats, filename)
-    print(f"Wrote ATS to {filename}")
-
-    # read back
     ats_loaded = umbi.io.read_ats(filename)
-    print(f"Loaded ATS from {filename}: {ats_loaded.num_states} states, {ats_loaded.num_actions} actions")
+    print(f"Loaded ATS having {ats_loaded.num_states} states and {ats_loaded.num_choices} choices")
 
     # simple equality check using __eq__
-    assert ats == ats_loaded
+    if not ats == ats_loaded:
+        print("ATS objects differ!")
+        ats.equal(ats_loaded, debug=True)
 
 
 if __name__ == "__main__":

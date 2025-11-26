@@ -45,7 +45,8 @@ __all__ = [
     "promote_numeric",
     # vector.py
     "VectorType",
-    "CSR_TYPE",
+    "VECTOR_TYPE_CSR",
+    "VECTOR_TYPE_BITVECTOR",
     "assert_is_list",
     "is_vector_of_common_type",
     "is_vector_of_type",

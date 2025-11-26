@@ -77,7 +77,7 @@ def vector_to_bytes(
     vector: list, value_type: CommonType | StructType, little_endian: bool = True
 ) -> tuple[bytes, list[int] | None]:
     """Encode a list of values as a binary string.
-    :param value_type: vector element type, either composite, bool, string or {int32|uint32|int64|uint64|double|rational}[-interval]
+    :param value_type: vector element type
     :return: encoded binary string
     :return: (optional) chunk csr if non-trivial splitting is needed to split the resulting bytestring into chunks, e.g. for strings or non-standard rationals
     """

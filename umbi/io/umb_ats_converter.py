@@ -54,9 +54,9 @@ def ats_annotation_to_umb_annotation(annotation: umbi.ats.Annotation) -> tuple[A
         applies_to.append(key)
         if is_numeric_type(target_type):
             if target_type == CommonType.INT:
-                # UMB annotations do not support int type, promote to double
+                # implicit promotion of int to double
                 target_type = CommonType.DOUBLE
-            # implicit promotion
+            # promote all to common type
             values = promote_to_vector_of_numeric(values, target_type)
         applies_to_values[key] = values
     umb_annotation = Annotation(
@@ -250,10 +250,13 @@ def explicit_ats_to_explicit_umb(ats: umbi.ats.ExplicitAts) -> ExplicitUmb:
 
     umb.state_is_markovian = ats.state_is_markovian
     if ats.state_exit_rate is not None:
-        # promote
         target_type = ats.exit_rate_type
         assert target_type is not None
-        umb.index.exit_rate_type = target_type.value
+        if target_type == CommonType.INT:
+            # implicit promotion of int to double
+            target_type = CommonType.DOUBLE
+        # promote all to common type
+        umb.index.transition_system.exit_rate_type = target_type.value
         umb.state_to_exit_rate = promote_to_vector_of_numeric(ats.state_exit_rate, target_type)
 
     umb.choice_to_branch = ats.choice_to_branch
@@ -267,7 +270,11 @@ def explicit_ats_to_explicit_umb(ats: umbi.ats.ExplicitAts) -> ExplicitUmb:
         # promote
         target_type = ats.branch_probability_type
         assert target_type is not None
-        umb.index.branch_probability_type = target_type.value
+        if target_type == CommonType.INT:
+            # implicit promotion of int to double
+            target_type = CommonType.DOUBLE
+        # promote all to common type
+        umb.index.transition_system.branch_probability_type = target_type.value
         umb.branch_to_probability = promote_to_vector_of_numeric(ats.branch_probabilities, target_type)
 
     umb.rewards = reward_values
