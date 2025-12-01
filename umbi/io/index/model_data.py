@@ -6,7 +6,10 @@ from dataclasses import dataclass
 
 from marshmallow import fields
 
-from .json_schema import *
+from .json_schema import (
+    JsonSchema,
+    JsonSchemaResult,
+)
 
 
 class ModelDataSchema(JsonSchema):

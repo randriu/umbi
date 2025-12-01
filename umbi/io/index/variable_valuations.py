@@ -2,14 +2,15 @@
 Variable valuation schemas and classes.
 """
 
-from dataclasses import dataclass
-
 from marshmallow import fields, post_load, validate
 from marshmallow_oneofschema.one_of_schema import OneOfSchema
 
 import umbi.datatypes
 
-from .json_schema import *
+from .json_schema import (
+    JsonSchema,
+    FieldUint,
+)
 
 
 class ValuationPaddingSchema(JsonSchema):
@@ -28,7 +29,9 @@ class ValuationAttributeSchema(JsonSchema):
 
     name = fields.String(data_key="name", required=True)
     type = fields.String(
-        data_key="type", required=True, validate=validate.OneOf(["bool", "int", "uint", "double", "rational", "string"])
+        data_key="type",
+        required=True,
+        validate=validate.OneOf(["bool", "int", "uint", "double", "rational", "string"]),
     )
     size = FieldUint(data_key="size", required=False)
     lower = fields.Float(data_key="lower", required=False)
@@ -73,7 +76,10 @@ class ValuationFieldSchema(OneOfSchema):
     def load(self, json_data, *args, **kwargs):
         """Add discriminator field before loading."""
         assert isinstance(json_data, dict)
-        json_data = dict(json_data, _discriminator="padding" if "padding" in json_data else "attribute")
+        json_data = dict(
+            json_data,
+            _discriminator="padding" if "padding" in json_data else "attribute",
+        )
         return super().load(json_data, *args, **kwargs)
 
     def dump(self, obj, *args, **kwargs):

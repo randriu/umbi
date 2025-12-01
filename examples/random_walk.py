@@ -124,8 +124,9 @@ def random_walk_ats(num_states: int) -> umbi.ats.ExplicitAts:
 
 
 def main():
-    # import logging
-    # umbi.setup_logging(level=logging.DEBUG)
+    import logging
+
+    umbi.setup_logging(level=logging.DEBUG)
 
     filename = "random_walk.umb"
     ats = random_walk_ats(num_states=10)

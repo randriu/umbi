@@ -24,8 +24,7 @@ Homepage = "https://github.com/randriu/umbi"
 dev = [
   "pytest",
   "pip-tools",
-  "black",
-  "isort",
+  "ruff",
   "toml-sort",
   "twine",
   "bump-my-version",
@@ -55,3 +54,14 @@ message = "bump version {current_version} -> {new_version}"
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"
+
+[tool.ruff]
+line-length = 120
+exclude = [
+  "build",
+  "dist",
+  ".venv",
+  ".venv/*",
+  ".git",
+  "__pycache__",
+]

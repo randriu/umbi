@@ -1,9 +1,10 @@
+from dataclasses import dataclass
 from enum import Enum
 
 from umbi.datatypes import (
     CommonType,
-    Numeric,
     common_numeric_type,
+    is_instance_of_common_type,
     is_numeric_type,
     vector_element_types,
 )
@@ -185,3 +186,47 @@ class ObservationAnnotation(Annotation):
         for item, obs in enumerate(self.mapping):
             if not 0 <= obs < self.num_observations:
                 raise ValueError(f"observation mapping[{item}] = {obs} is out of range [0, {self.num_observations})")
+
+
+@dataclass
+class Variable:
+    """Variable data class."""
+
+    name: str
+    type: CommonType  # keep type for now, consider auto-detecting later
+
+    def validate(self) -> None:
+        if not isinstance(self.name, str):
+            raise ValueError("Variable name must be a string")
+        if not isinstance(self.type, CommonType):
+            raise ValueError("Variable type must be a CommonType")
+
+
+@dataclass
+class VariableValuations:
+    """Variable valuation data class."""
+
+    """Number of entries, usually one of num_states, num_choices, num_branches."""
+    num_entries: int
+    """List of variables."""
+    variables: list[Variable]
+    """For each entry, a list of variable values."""
+    entry_to_values: list[list]
+
+    def validate(self):
+        if not isinstance(self.num_entries, int) or self.num_entries <= 0:
+            raise ValueError(f"num_entries must be a positive integer, got {self.num_entries}")
+        if not isinstance(self.variables, list) or not all(isinstance(v, Variable) for v in self.variables):
+            raise ValueError("variables must be a list of Variable instances")
+        [v.validate() for v in self.variables]
+        if not isinstance(self.entry_to_values, list) or len(self.entry_to_values) != self.num_entries:
+            raise ValueError("entry_to_values must be a list with length equal to num_entries")
+        for entry, values in enumerate(self.entry_to_values):
+            if not isinstance(values, list):
+                raise ValueError(f"entry_to_values[{entry}] must be a list")
+            for variable_index, variable in enumerate(self.variables):
+                value = values[variable_index]
+                if not is_instance_of_common_type(value, variable.type):
+                    raise ValueError(
+                        f"entry_to_values[{entry}][{variable_index}] must be of type {variable.name}.type={variable.type}, got {value}"
+                    )

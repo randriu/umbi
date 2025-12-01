@@ -23,8 +23,6 @@ class VectorType:
 
 """Alias for a CSR vector type."""
 VECTOR_TYPE_CSR = VectorType(CommonType.UINT64)
-"""Alias for a bitvector type."""
-VECTOR_TYPE_BITVECTOR = VectorType(CommonType.BOOLEAN)
 
 
 def assert_is_list(vector: object):

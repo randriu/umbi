@@ -2,18 +2,14 @@
 Utilities for reading and writing umbfiles.
 """
 
+from enum import Enum
 import logging
 from dataclasses import dataclass, field
 from typing import no_type_check
 
-logger = logging.getLogger(__name__)
-
-from enum import Enum
-
 import umbi.binary
 import umbi.datatypes
 from umbi.datatypes import (
-    VECTOR_TYPE_BITVECTOR,
     VECTOR_TYPE_CSR,
     CommonType,
     Numeric,
@@ -25,16 +21,19 @@ from .index import Annotation, UmbIndex
 from .tar import TarReader, TarWriter
 
 
+logger = logging.getLogger(__name__)
+
+
 class UmbFile(Enum):
     """A list of common files expected in a umbfile. Each entry is a tuple of (filename, filetype)."""
 
     INDEX_JSON = ("index.json", CommonType.JSON)
 
-    STATE_IS_INITIAL = ("initial-states.bin", VECTOR_TYPE_BITVECTOR)
+    STATE_IS_INITIAL = ("initial-states.bin", VectorType(CommonType.BOOLEAN))
     STATE_TO_CHOICE = ("state-to-choice.bin", VECTOR_TYPE_CSR)
     STATE_TO_PLAYER = ("state-to-player.bin", VectorType(CommonType.UINT32))
 
-    STATE_IS_MARKOVIAN = ("markovian-states.bin", VECTOR_TYPE_BITVECTOR)
+    STATE_IS_MARKOVIAN = ("markovian-states.bin", VectorType(CommonType.BOOLEAN))
     STATE_TO_EXIT_RATE = ("exit-rates.bin", CommonType.BYTES)
     STATE_TO_EXIT_RATE_CSR = ("state-to-exit-rate.bin", VECTOR_TYPE_CSR)
 
@@ -47,8 +46,14 @@ class UmbFile(Enum):
     ACTION_TO_STRING = ("choice-action-strings.bin", VectorType(CommonType.STRING))
     ACTION_TO_STRING_CSR = ("choice-action-to-string.bin", VECTOR_TYPE_CSR)
 
-    BRANCH_TO_BRANCH_ACTION = ("branch-to-branch-action.bin", VectorType(CommonType.UINT32))
-    BRANCH_ACTION_TO_STRING = ("branch-action-strings.bin", VectorType(CommonType.STRING))
+    BRANCH_TO_BRANCH_ACTION = (
+        "branch-to-branch-action.bin",
+        VectorType(CommonType.UINT32),
+    )
+    BRANCH_ACTION_TO_STRING = (
+        "branch-action-strings.bin",
+        VectorType(CommonType.STRING),
+    )
     BRANCH_ACTION_TO_STRING_CSR = ("branch-action-to-string.bin", VECTOR_TYPE_CSR)
 
     STATE_TO_VALUATION = ("state-valuations.bin", CommonType.BYTES)
@@ -115,12 +120,18 @@ class UmbReader(TarReader):
         filename, filetype = file.value
         return self.read_filetype(filename, filetype, required)
 
-    def truncate_bitvector(self, vector: list[bool], num_entries: int) -> list[bool]:
-        if not len(vector) >= num_entries:
-            logger.error(f"bitvector length {len(vector)} is shorter than expected {num_entries}")
-        return vector[:num_entries]
+    def truncate_bitvector(self, vector: list, num_entries: int) -> list:
+        """Truncate a bitvector to num_entries if its length exceeds this number."""
+        if len(vector) > num_entries:
+            if any(vector[num_entries:]):
+                logger.warning(
+                    f"bitvector {len(vector)} exceeds expected length of {num_entries}, truncating and discarding non-False entries"
+                )
+            vector = vector[:num_entries]
+        return vector
 
     def read_common_bitvector(self, file: UmbFile, num_entries: int, required: bool = False) -> list[bool] | None:
+        """Read a bitvector and truncate it to num_entries if necessary."""
         vector = self.read_common(file, required)
         if vector is None:
             return None
@@ -166,7 +177,10 @@ class UmbReader(TarReader):
             path = f"annotations/{label}/{name}/for-{applies}"
             annotation_type = CommonType(annotation.type) if annotation.type is not None else CommonType.BOOLEAN
             vector = self.read_filetype_with_csr(
-                f"{path}/values.bin", annotation_type, required=True, filename_csr=f"{path}/to-values.bin"
+                f"{path}/values.bin",
+                annotation_type,
+                required=True,
+                filename_csr=f"{path}/to-values.bin",
             )
             assert isinstance(vector, list)
             if annotation_type == CommonType.BOOLEAN:
@@ -208,7 +222,11 @@ class UmbReader(TarReader):
         return self.read_common(file, required=True)
 
     def read_variable_valuations(
-        self, variable_valuations: StructType, num_entries: int, file: UmbFile, file_csr: UmbFile
+        self,
+        variable_valuations: StructType,
+        num_entries: int,
+        file: UmbFile,
+        file_csr: UmbFile,
     ) -> list[dict]:
         chunks_csr = self.read_common(file_csr, required=False)
         if chunks_csr is None:
@@ -282,18 +300,22 @@ class UmbReader(TarReader):
         umb.item_to_observation = self.read_observations(ts.num_observations, ts.observations_apply_to)
 
         self.list_unread_files()
-        logger.info(f"finished loading the umbfile")
+        logger.info("finished loading the umbfile")
         return umb
 
 
 class UmbWriter(TarWriter):
-
     def add_common(self, file: UmbFile, data, required: bool = False):
         filename, filetype = file.value
         self.add_filetype(filename, filetype, data, required=required)
 
     def add_common_csr(
-        self, file: UmbFile, data, file_csr: UmbFile, required: bool = False, value_type: CommonType | None = None
+        self,
+        file: UmbFile,
+        data,
+        file_csr: UmbFile,
+        required: bool = False,
+        value_type: CommonType | None = None,
     ):
         if value_type is None:
             _, filetype = file.value
@@ -308,7 +330,13 @@ class UmbWriter(TarWriter):
         json_obj = index.to_json()
         self.add_common(file, json_obj, required=True)
 
-    def add_annotation(self, label: str, name: str, annotation_info: Annotation, applies_values: dict[str, list]):
+    def add_annotation(
+        self,
+        label: str,
+        name: str,
+        annotation_info: Annotation,
+        applies_values: dict[str, list],
+    ):
         """
         Add files for an annotation.
         :param label: annotation label, usually one of ["rewards","aps"]
@@ -353,7 +381,11 @@ class UmbWriter(TarWriter):
         self.add_common(file, item_to_observation, required=True)
 
     def add_variable_valuations(
-        self, valuation_type: StructType, variable_valuations: list[dict], file: UmbFile, file_csr: UmbFile
+        self,
+        valuation_type: StructType,
+        variable_valuations: list[dict],
+        file: UmbFile,
+        file_csr: UmbFile,
     ):
         bytestring, chunk_ranges = umbi.binary.vector_to_bytes(variable_valuations, valuation_type)
         assert chunk_ranges is not None
@@ -392,7 +424,9 @@ class UmbWriter(TarWriter):
         self.add_common_csr(UmbFile.ACTION_TO_STRING, umb.action_to_string, UmbFile.ACTION_TO_STRING_CSR)
         self.add_common(UmbFile.BRANCH_TO_BRANCH_ACTION, umb.branch_to_branch_action)
         self.add_common_csr(
-            UmbFile.BRANCH_ACTION_TO_STRING, umb.branch_action_to_string, UmbFile.BRANCH_ACTION_TO_STRING_CSR
+            UmbFile.BRANCH_ACTION_TO_STRING,
+            umb.branch_action_to_string,
+            UmbFile.BRANCH_ACTION_TO_STRING_CSR,
         )
 
         if umb.index.annotations is not None:
@@ -408,7 +442,7 @@ class UmbWriter(TarWriter):
             )
         self.add_observations(umb.index.transition_system.observations_apply_to, umb.item_to_observation)
         self.write(umbpath)
-        logger.info(f"finished writing the umbfile")
+        logger.info("finished writing the umbfile")
 
 
 def read_umb(umbpath: str) -> ExplicitUmb:

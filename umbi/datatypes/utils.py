@@ -67,7 +67,9 @@ def promote_numeric_primitive(value: NumericPrimitive, target_type: CommonType) 
         elif isinstance(value, int):
             return Fraction(value, 1)
         elif isinstance(value, float):
+            print(f"promoting float {value} to rational {Fraction.from_float(value)}")
             return Fraction.from_float(value)
+
         else:
             raise ValueError(f"cannot promote value {value} to rational")
 

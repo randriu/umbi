@@ -4,7 +4,7 @@ Utilities for (de)serializing strings.
 
 from umbi.datatypes import CommonType
 
-from .integers import bytes_to_integer, fixed_size_integer_to_bytes, integer_to_bytes
+from .integers import bytes_to_integer, fixed_size_integer_to_bytes
 from .utils import split_bytes
 
 

@@ -36,7 +36,10 @@ class StructPacker:
     def flush_buffer(self):
         """Flush full bytes from the buffer to the bytestring."""
         while len(self.buffer) >= 8:  # append one byte at a time so that the bytestring is little-endian
-            self.buffer, bits = self.buffer[:-8], self.buffer[-8:]  # get new bits from the end (LSB side)
+            self.buffer, bits = (
+                self.buffer[:-8],
+                self.buffer[-8:],
+            )  # get new bits from the end (LSB side)
             new_bytes = bits.tobytes()
             self.bytestring += new_bytes
 

@@ -1,10 +1,8 @@
 import logging
+import click
+from umbi import setup_logging, set_log_level, __toolname__, __version__, io
 
 logger = logging.getLogger(__name__)
-
-import click
-
-import umbi
 
 
 @click.command()
@@ -19,18 +17,17 @@ import umbi
 @click.option("--import-umb", type=click.Path(), required=False, help=".umb filepath to import")
 @click.option("--export-umb", type=click.Path(), required=False, help=".umb filepath to export")
 def main(log_level, import_umb, export_umb):
-
-    umbi.setup_logging()
-    umbi.set_log_level(getattr(logging, log_level))
-    logger.info(f"this is {umbi.__toolname__} v.{umbi.__version__}")
+    setup_logging()
+    set_log_level(getattr(logging, log_level))
+    logger.info(f"this is {__toolname__} v.{__version__}")
 
     ats = None
     if import_umb is not None:
-        ats = umbi.io.read_umb(import_umb)
+        ats = io.read_umb(import_umb)
     if export_umb is not None:
         if ats is None:
             raise ValueError("--export-umb specified, but nothing to export")
-        umbi.io.write_umb(ats, export_umb)
+        io.write_umb(ats, export_umb)
 
 
 if __name__ == "__main__":

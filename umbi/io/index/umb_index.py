@@ -8,10 +8,15 @@ from marshmallow import fields
 
 from .annotations import Annotations, AnnotationsSchema
 from .file_data import FileData, FileDataSchema
-from .json_schema import *
+from .json_schema import (
+    JsonSchema,
+    JsonSchemaResult,
+    FieldUint,
+)
 from .model_data import ModelData, ModelDataSchema
 from .transition_system import TransitionSystem, TransitionSystemSchema
 from .variable_valuations import VariableValuationsSchema
+import umbi.datatypes
 
 
 class UmbIndexSchema(JsonSchema):
@@ -32,7 +37,6 @@ class UmbIndexSchema(JsonSchema):
 
 @dataclass
 class UmbIndex(JsonSchemaResult):
-
     format_version: int = 0
     format_revision: int = 0
     model_data: ModelData | None = None

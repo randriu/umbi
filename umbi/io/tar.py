@@ -4,14 +4,16 @@ Utilities for reading/wrting Tar archives.
 
 import io as std_io
 import logging
-
-from umbi.datatypes import VECTOR_TYPE_CSR, CommonType, VectorType
-
-logger = logging.getLogger(__name__)
 import tarfile
-
 import umbi.binary
 import umbi.datatypes
+from umbi.datatypes import (
+    VECTOR_TYPE_CSR,
+    CommonType,
+    VectorType,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class TarReader:
@@ -32,7 +34,7 @@ class TarReader:
                     if fileobj is None:
                         raise KeyError(f"Could not extract file {member.name} from {tarpath}")
                     filename_data[member.name] = fileobj.read()
-        logger.debug(f"successfully loaded the tarfile")
+        logger.debug("successfully loaded the tarfile")
         return filename_data
 
     def __init__(self, tarpath: str):
@@ -120,7 +122,7 @@ class TarWriter:
                 tar_info = tarfile.TarInfo(name=filename)
                 tar_info.size = len(data)
                 tar.addfile(tar_info, std_io.BytesIO(data))
-        logger.debug(f"successfully wrote the tarfile")
+        logger.debug("successfully wrote the tarfile")
 
     def __init__(self):
         self.filename_data = {}
@@ -132,7 +134,13 @@ class TarWriter:
             logger.warning(f"file {filename} already exists in the tarball, overwriting")
         self.filename_data[filename] = data
 
-    def add_filetype(self, filename: str, filetype: CommonType | VectorType, data, required: bool = False):
+    def add_filetype(
+        self,
+        filename: str,
+        filetype: CommonType | VectorType,
+        data,
+        required: bool = False,
+    ):
         if data is None:
             if required:
                 raise ValueError(f"missing required data for {filename}")
@@ -154,7 +162,14 @@ class TarWriter:
         assert isinstance(data_out, bytes), "data_out must be of type bytes"
         self.add_file(filename, data_out)
 
-    def add_filetype_with_csr(self, filename: str, value_type: CommonType, data, required: bool, filename_csr: str):
+    def add_filetype_with_csr(
+        self,
+        filename: str,
+        value_type: CommonType,
+        data,
+        required: bool,
+        filename_csr: str,
+    ):
         if data is None:
             if required:
                 raise ValueError(f"missing required data for {filename}")

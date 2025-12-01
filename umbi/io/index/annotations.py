@@ -7,7 +7,10 @@ from typing import Literal, Type
 
 from marshmallow import fields, validate
 
-from .json_schema import *
+from .json_schema import (
+    JsonSchema,
+    JsonSchemaResult,
+)
 
 
 class AnnotationSchema(JsonSchema):
@@ -24,7 +27,16 @@ class AnnotationSchema(JsonSchema):
     type = fields.String(
         data_key="type",
         required=False,
-        validate=validate.OneOf(["bool", "double", "rational", "double-interval", "rational-interval", "string"]),
+        validate=validate.OneOf(
+            [
+                "bool",
+                "double",
+                "rational",
+                "double-interval",
+                "rational-interval",
+                "string",
+            ]
+        ),
     )
     lower = fields.Float(data_key="lower", required=False)
     upper = fields.Float(data_key="upper", required=False)
@@ -41,7 +53,17 @@ class Annotation(JsonSchemaResult):
     alias: str | None = None
     description: str | None = None
     applies_to: list[Literal["states", "choices", "branches"]] | None = None
-    type: Literal["bool", "double", "rational", "double-interval", "rational-interval", "string"] | None = None
+    type: (
+        Literal[
+            "bool",
+            "double",
+            "rational",
+            "double-interval",
+            "rational-interval",
+            "string",
+        ]
+        | None
+    ) = None
     lower: float | None = None
     upper: float | None = None
 
@@ -54,9 +76,17 @@ class AnnotationsSchema(JsonSchema):
     """Schema for all annotations."""
 
     rewards = fields.Dict(
-        keys=fields.String(), values=fields.Nested(AnnotationSchema), data_key="rewards", required=False
+        keys=fields.String(),
+        values=fields.Nested(AnnotationSchema),
+        data_key="rewards",
+        required=False,
     )
-    aps = fields.Dict(keys=fields.String(), values=fields.Nested(AnnotationSchema), data_key="aps", required=False)
+    aps = fields.Dict(
+        keys=fields.String(),
+        values=fields.Nested(AnnotationSchema),
+        data_key="aps",
+        required=False,
+    )
 
     @classmethod
     def schema_class(cls) -> type:

@@ -7,7 +7,7 @@ The serialization operations for composites remain in umbi.binary.composites.
 
 from dataclasses import dataclass, field
 
-from .common_type import *
+from .common_type import CommonType
 
 
 @dataclass
@@ -60,16 +60,6 @@ class StructType:
 
     alignment: int  # alignment in bits
     fields: list[StructPadding | StructAttribute] = field(default_factory=list)
-
-    # @classmethod
-    # def from_namespace(cls, data: SimpleNamespace) -> "StructType":
-    #     fields = []
-    #     for item in data.variables:
-    #         if hasattr(item, "padding"):
-    #             fields.append(StructPadding.from_namespace(item))
-    #         else:
-    #             fields.append(StructAttribute.from_namespace(item))
-    #     return cls(data.alignment, fields)
 
     def validate(self):
         for item in self.fields:

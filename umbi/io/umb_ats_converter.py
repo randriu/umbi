@@ -29,18 +29,22 @@ def umbi_file_data() -> FileData:
 
 
 def umb_annotation_to_ats_annotation(
-    umb_annotation: Annotation, applies_to_values: dict[str, list], ats_annotation: umbi.ats.Annotation
+    umb_annotation: Annotation,
+    applies_to_values: dict[str, list],
+    ats_annotation: umbi.ats.Annotation,
 ):
     for applies_to in umb_annotation.applies_to or []:
         if applies_to == "states":
-            ats_annotation.state_to_value = applies_to_values["states"]
+            ats_annotation.state_to_value = applies_to_values[applies_to]
         elif applies_to == "choices":
-            ats_annotation.choice_to_value = applies_to_values["choices"]
+            ats_annotation.choice_to_value = applies_to_values[applies_to]
         elif applies_to == "branches":
-            ats_annotation.branch_to_value = applies_to_values["branches"]
+            ats_annotation.branch_to_value = applies_to_values[applies_to]
 
 
-def ats_annotation_to_umb_annotation(annotation: umbi.ats.Annotation) -> tuple[Annotation, dict[str, list]]:
+def ats_annotation_to_umb_annotation(
+    annotation: umbi.ats.Annotation,
+) -> tuple[Annotation, dict[str, list]]:
     applies_to = []
     applies_to_values = {}
     target_type = annotation.type

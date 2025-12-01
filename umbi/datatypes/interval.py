@@ -29,9 +29,12 @@ class Interval:
     def __str__(self) -> str:
         return f"interval[{self.left},{self.right}]"
 
+    def __repr__(self) -> str:
+        return str(self)
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Interval):
-            raise ValueError("can only compare Interval with another Interval")
+            return False
         return self.left == other.left and self.right == other.right
 
     def __contains__(self, value: NumericPrimitive) -> bool:

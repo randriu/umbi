@@ -14,19 +14,23 @@ def interval_to_bytes(interval: Interval, type: CommonType, little_endian: bool 
     umbi.datatypes.assert_interval_type(type)
     base_type = interval_base_type(type)
 
-    # Updated references to use directly imported symbols.
-    converter = None
     if base_type == CommonType.RATIONAL:
         assert isinstance(interval.left, Fraction) and isinstance(interval.right, Fraction)
         # ensure both rationals use the same size for numerator and denominator
-        term_size = max(num_bytes_for_rational(interval.left), num_bytes_for_rational(interval.right)) // 2
-        converter = lambda value: rational_to_bytes(value, term_size, little_endian)
+        term_size = (
+            max(
+                num_bytes_for_rational(interval.left),
+                num_bytes_for_rational(interval.right),
+            )
+            // 2
+        )
+        lower = rational_to_bytes(interval.left, term_size, little_endian)
+        upper = rational_to_bytes(interval.right, term_size, little_endian)
     else:
         assert base_type == CommonType.DOUBLE
         assert isinstance(interval.left, float) and isinstance(interval.right, float)
-        converter = lambda value: double_to_bytes(value, little_endian)
-    lower = converter(interval.left)
-    upper = converter(interval.right)
+        lower = double_to_bytes(interval.left, little_endian)
+        upper = double_to_bytes(interval.right, little_endian)
     return lower + upper
 
 

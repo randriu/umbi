@@ -90,7 +90,8 @@ def ats_from_grid_string(grid: str) -> umbi.ats.ExplicitAts:
 
     ats.add_ap_annotation(
         umbi.ats.AtomicPropositionAnnotation(
-            name="goal", state_to_value=[s in goal_states for s in range(ats.num_states)]
+            name="goal",
+            state_to_value=[s in goal_states for s in range(ats.num_states)],
         )
     )
 

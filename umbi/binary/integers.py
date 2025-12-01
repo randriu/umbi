@@ -52,7 +52,12 @@ def num_bytes_for_fixed_size_integer(type: CommonType) -> int:
     return size_map[type]
 
 
-def assert_integer_fits(value: int, signed: bool = True, num_bits: int | None = None, num_bytes: int | None = None):
+def assert_integer_fits(
+    value: int,
+    signed: bool = True,
+    num_bits: int | None = None,
+    num_bytes: int | None = None,
+):
     """Assert that an integer fits in the given number of bits/bytes."""
     assert (num_bits is None) != (num_bytes is None), "either num_bits or num_bytes must be provided, but not both"
     if num_bits is None:
@@ -89,9 +94,9 @@ def bytes_to_fixed_size_integer(data: bytes, value_type: CommonType, little_endi
     """Convert a binary string to a fixed-size integer value of the given type."""
     signed = umbi.datatypes.integer_type_signed(value_type)
     num_bytes = num_bytes_for_fixed_size_integer(value_type)
-    assert (
-        len(data) == num_bytes
-    ), f"data length {len(data)} does not match expected size {num_bytes} for type {value_type}"
+    assert len(data) == num_bytes, (
+        f"data length {len(data)} does not match expected size {num_bytes} for type {value_type}"
+    )
     return bytes_to_integer(data, signed=signed, little_endian=little_endian)
 
 

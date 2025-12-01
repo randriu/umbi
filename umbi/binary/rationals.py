@@ -4,7 +4,12 @@ Utilities for (de)serializing fractions.
 
 from fractions import Fraction
 
-from .integers import *
+from .integers import (
+    num_bits_for_integer,
+    num_bytes_for_integer,
+    integer_to_bytes,
+    bytes_to_integer,
+)
 from .utils import split_bytes
 
 # Convention: a normalized rational has a non-negative denominator.
@@ -49,7 +54,10 @@ def rational_to_bytes(value: Fraction, term_size: int | None = None, little_endi
         )
     numerator_bytes = integer_to_bytes(value.numerator, num_bytes=term_size, signed=True, little_endian=little_endian)
     denominator_bytes = integer_to_bytes(
-        value.denominator, num_bytes=term_size, signed=False, little_endian=little_endian
+        value.denominator,
+        num_bytes=term_size,
+        signed=False,
+        little_endian=little_endian,
     )
     return numerator_bytes + denominator_bytes
 

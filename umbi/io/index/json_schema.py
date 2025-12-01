@@ -12,7 +12,6 @@ from marshmallow import (
     ValidationError,
     fields,
     post_load,
-    validates_schema,
 )
 
 import umbi.datatypes
@@ -73,7 +72,6 @@ class JsonSchema(Schema):
 
 @dataclass
 class JsonSchemaResult(SimpleNamespace):
-
     @classmethod
     def class_schema(cls) -> type:
         """The schema responsible for serialization of this class."""

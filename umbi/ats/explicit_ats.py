@@ -5,13 +5,16 @@ from typing import Iterable
 
 from umbi.datatypes import (
     CommonType,
-    Interval,
     Numeric,
     StructType,
     vector_common_numeric_type,
 )
 
-from .annotation import *
+from .annotation import (
+    RewardAnnotation,
+    AtomicPropositionAnnotation,
+    ObservationAnnotation,
+)
 from .model_info import ModelInfo
 
 logger = logging.getLogger(__name__)

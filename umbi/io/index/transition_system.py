@@ -5,16 +5,21 @@ Transition system schemas and classes.
 from dataclasses import dataclass
 from typing import Literal, Type
 
-from marshmallow import fields, post_load, validate
+from marshmallow import fields, validate
 
-from .json_schema import *
+from .json_schema import (
+    JsonSchema,
+    JsonSchemaResult,
+)
 
 
 class TransitionSystemSchema(JsonSchema):
     """Transition system schema."""
 
     time = fields.String(
-        data_key="time", required=True, validate=validate.OneOf(["discrete", "stochastic", "urgent-stochastic"])
+        data_key="time",
+        required=True,
+        validate=validate.OneOf(["discrete", "stochastic", "urgent-stochastic"]),
     )
     num_players = fields.Int(data_key="#players", required=True, validate=validate.Range(min=0))
     num_states = fields.Int(data_key="#states", required=True, validate=validate.Range(min=1))
@@ -25,7 +30,9 @@ class TransitionSystemSchema(JsonSchema):
     num_branch_actions = fields.Int(data_key="#branch-actions", required=True, validate=validate.Range(min=0))
     num_observations = fields.Int(data_key="#observations", required=True, validate=validate.Range(min=0))
     observations_apply_to = fields.String(
-        data_key="observations-apply-to", required=False, validate=validate.OneOf(["states", "choices", "branches"])
+        data_key="observations-apply-to",
+        required=False,
+        validate=validate.OneOf(["states", "choices", "branches"]),
     )
 
     # coordination WIP marker
