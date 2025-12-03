@@ -42,6 +42,33 @@ class Annotation:
     def name(self) -> str:
         return self._name
 
+    def get_values_for(self, applies_to: AnnotationAppliesTo) -> list | None:
+        """Get the values for the given applies-to type."""
+        if applies_to == AnnotationAppliesTo.STATES:
+            return self.state_to_value
+        elif applies_to == AnnotationAppliesTo.CHOICES:
+            return self.choice_to_value
+        elif applies_to == AnnotationAppliesTo.BRANCHES:
+            return self.branch_to_value
+        else:
+            raise ValueError(f"Unknown applies-to type: {applies_to}")
+
+    def has_values_for(self, applies_to: AnnotationAppliesTo) -> bool:
+        """Check if the annotation has values for the given applies-to type."""
+        return self.get_values_for(applies_to) is not None
+
+    @property
+    def has_state_values(self) -> bool:
+        return self.state_to_value is not None
+
+    @property
+    def has_choice_values(self) -> bool:
+        return self.choice_to_value is not None
+
+    @property
+    def has_branch_values(self) -> bool:
+        return self.branch_to_value is not None
+
     def __eq__(self, other) -> bool:
         if not isinstance(other, Annotation):
             return False
