@@ -7,7 +7,6 @@ including intervals, composite types, vector utilities, and JSON operations. Ser
 
 from .common_type import (
     CommonType,
-    common_numeric_type,
     is_fixed_size_integer_type,
     is_variable_size_integer_type,
     is_integer_type,
@@ -37,8 +36,6 @@ from .utils import (
     NumericPrimitive,
     Numeric,
     is_instance_of_common_type,
-    promote_numeric_primitive,
-    promote_numeric,
 )
 from .vector import (
     VectorType,
@@ -46,17 +43,23 @@ from .vector import (
     assert_is_list,
     is_vector_of_common_type,
     is_vector_of_type,
-    vector_common_numeric_type,
     vector_element_types,
-    promote_vector,
-    promote_to_vector_of_numeric,
     csr_to_ranges,
+)
+from .promotion import (
+    promote_numeric_primitive,
+    promote_numeric,
+    can_promote_numeric_to,
+    can_promote_to,
+    can_promote_vector_to,
+    promote_to_vector_of_numeric_primitive,
+    promote_to_vector_of_numeric,
+    promote_vector,
 )
 
 __all__ = [
     # common_type.py
     "CommonType",
-    "common_numeric_type",
     "is_fixed_size_integer_type",
     "is_variable_size_integer_type",
     "is_integer_type",
@@ -84,17 +87,22 @@ __all__ = [
     "NumericPrimitive",
     "Numeric",
     "is_instance_of_common_type",
-    "promote_numeric_primitive",
-    "promote_numeric",
     # vector.py
     "VectorType",
     "VECTOR_TYPE_CSR",
     "assert_is_list",
     "is_vector_of_common_type",
     "is_vector_of_type",
-    "vector_common_numeric_type",
     "vector_element_types",
     "promote_vector",
     "promote_to_vector_of_numeric",
     "csr_to_ranges",
+    # promotion.py
+    "promote_numeric_primitive",
+    "promote_numeric",
+    "can_promote_numeric_to",
+    "can_promote_to",
+    "can_promote_vector_to",
+    "promote_to_vector_of_numeric_primitive",
+    "promote_to_vector_of_numeric",
 ]

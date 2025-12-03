@@ -37,12 +37,15 @@ def ats_from_grid_string(grid: str) -> umbi.ats.ExplicitAts:
     initial_states = set()
     goal_states = set()
 
+    state_to_cell = []
+
     for y in range(rows):
         for x in range(cols):
             c = parsed_grid[y][x]
             if c == "x":
                 continue
             state = len(cell_to_state)
+            state_to_cell.append((x, y))
             cell_to_state[(x, y)] = state
             if c == "i":
                 initial_states.add(state)
@@ -51,6 +54,12 @@ def ats_from_grid_string(grid: str) -> umbi.ats.ExplicitAts:
 
     ats.num_states = len(cell_to_state)
     ats.set_initial_states(list(initial_states))
+
+    vx = ats.state_valuations.add_variable("x")
+    vy = ats.state_valuations.add_variable("y")
+    for state in range(ats.num_states):
+        x, y = state_to_cell[state]
+        ats.state_valuations.set_item_valuation(state, {vx: x, vy: y})
 
     direction_dxdy = {
         "up": (0, 1),
@@ -98,12 +107,14 @@ def ats_from_grid_string(grid: str) -> umbi.ats.ExplicitAts:
     ats.add_reward_annotation(
         umbi.ats.RewardAnnotation(name="step_cost", choice_to_value=[1 for _ in range(ats.num_choices)])
     )
+
     return ats
 
 
 def main():
-    # import logging
-    # umbi.setup_logging(level=logging.DEBUG)
+    import logging
+
+    umbi.setup_logging(level=logging.DEBUG)
 
     grid = """
     ....x..g

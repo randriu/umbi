@@ -6,16 +6,15 @@ from typing import Iterable
 from umbi.datatypes import (
     CommonType,
     Numeric,
-    StructType,
-    vector_common_numeric_type,
+    can_promote_vector_to,
 )
-
-from .annotation import (
+from .annotations import (
     RewardAnnotation,
     AtomicPropositionAnnotation,
     ObservationAnnotation,
 )
 from .model_info import ModelInfo
+from .variable_valuations import ItemValuations
 
 logger = logging.getLogger(__name__)
 
@@ -70,9 +69,7 @@ class ExplicitAts:
     ap_annotations: dict[str, AtomicPropositionAnnotation] = field(default_factory=dict)
     observation_annotation: ObservationAnnotation | None = None
 
-    # TODO consolidate into one structure
-    state_valuations: StructType | None = None
-    state_valuations_values: list[dict] | None = None
+    state_valuations: ItemValuations = field(default_factory=ItemValuations)
 
     def equal(self, other: object, debug=False) -> bool:
         if not isinstance(other, ExplicitAts):
@@ -157,28 +154,32 @@ class ExplicitAts:
     def branch_probability_type(self) -> CommonType | None:
         if self.branch_probabilities is None:
             return None
-        return vector_common_numeric_type(self.branch_probabilities)
+        return can_promote_vector_to(self.branch_probabilities)
 
     @property
     def exit_rate_type(self) -> CommonType | None:
         if self.state_exit_rate is None:
             return None
-        return vector_common_numeric_type(self.state_exit_rate)
+        return can_promote_vector_to(self.state_exit_rate)
 
     @property
     def reward_annotation_names(self) -> list[str]:
         """Get the names of all reward annotations."""
         return list(self.reward_annotations.keys())
 
+    def has_reward_annotation(self, name: str) -> bool:
+        """Check if a reward annotation with the given name exists."""
+        return name in self.reward_annotations
+
     def add_reward_annotation(self, annotation: RewardAnnotation):
         """Add a reward annotation."""
-        if annotation.name in self.reward_annotations:
+        if self.has_reward_annotation(annotation.name):
             raise ValueError(f"reward annotation with name {annotation.name} already exists")
         self.reward_annotations[annotation.name] = annotation
 
     def get_reward_annotation(self, name: str) -> RewardAnnotation:
         """Get the reward annotation with the given name."""
-        if name not in self.reward_annotations:
+        if not self.has_reward_annotation(name):
             raise ValueError(f"reward annotation with name {name} does not exist")
         return self.reward_annotations[name]
 
@@ -187,15 +188,19 @@ class ExplicitAts:
         """Get the names of all atomic proposition annotations."""
         return list(self.ap_annotations.keys())
 
+    def has_ap_annotation(self, name: str) -> bool:
+        """Check if an atomic proposition annotation with the given name exists."""
+        return name in self.ap_annotations
+
     def add_ap_annotation(self, annotation: AtomicPropositionAnnotation):
         """Add an atomic proposition annotation."""
-        if annotation.name in self.ap_annotations:
+        if self.has_ap_annotation(annotation.name):
             raise ValueError(f"AP annotation with name {annotation.name} already exists")
         self.ap_annotations[annotation.name] = annotation
 
     def get_ap_annotation(self, name: str) -> AtomicPropositionAnnotation:
         """Get the atomic proposition annotation with the given name."""
-        if name not in self.ap_annotations:
+        if not self.has_ap_annotation(name):
             raise ValueError(f"AP annotation with name {name} does not exist")
         return self.ap_annotations[name]
 
@@ -205,7 +210,7 @@ class ExplicitAts:
 
     @property
     def has_state_valuations(self) -> bool:
-        return self.state_valuations is not None
+        return self.state_valuations.num_variables > 0
 
     def validate(self):
         # TODO implement
@@ -240,3 +245,9 @@ class ExplicitAts:
             ap_annotation.validate()
         if self.observation_annotation is not None:
             self.observation_annotation.validate()
+        if self.has_state_valuations:
+            if not self.state_valuations.num_items == self.num_states:
+                raise ValueError(
+                    f"state_valuations has {self.state_valuations.num_items} items, expected {self.num_states}"
+                )
+            self.state_valuations.validate()

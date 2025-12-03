@@ -6,6 +6,8 @@ from umbi.datatypes import (
     CommonType,
     is_numeric_type,
     promote_to_vector_of_numeric,
+    StructAttribute,
+    StructType,
 )
 
 from .index import (
@@ -93,6 +95,37 @@ def umb_observations_to_ats_observations(
     return annotation
 
 
+def umb_valuations_to_ats_valuations(
+    valuation_type: StructType, item_to_valuation: list[dict]
+) -> umbi.ats.ItemValuations:
+    item_valuations = umbi.ats.ItemValuations()
+    for field in valuation_type.fields:
+        if isinstance(field, StructAttribute):
+            item_valuations.add_variable(variable_name=field.name)
+    variable_name_to_variable = {var.name: var for var in item_valuations.variables}
+    for item, valuation in enumerate(item_to_valuation):
+        variable_value = {variable_name_to_variable[variable_name]: value for variable_name, value in valuation.items()}
+        item_valuations.set_item_valuation(item, variable_value)
+    return item_valuations
+
+
+def ats_valuations_to_umb_valuations(item_valuations: umbi.ats.ItemValuations) -> tuple[StructType, list[dict]]:
+    valuation_type = StructType(alignment=1, fields=[])
+    # item_valuations.sync_domains() # must have been synced before validation
+    # promote to common type
+    var_values = {}
+    for var in item_valuations.variables:
+        assert var.type is not None
+        valuation_type.add_attribute(name=var.name, type=var.type)
+        values = item_valuations.get_variable_valuations(var).values
+        values = promote_to_vector_of_numeric(values, var.type)
+        var_values[var] = values
+    item_to_valuation = []
+    for item in range(item_valuations.num_items):
+        item_to_valuation.append({var.name: values[item] for var, values in var_values.items()})
+    return valuation_type, item_to_valuation
+
+
 def explicit_umb_to_explicit_ats(umb: ExplicitUmb) -> umbi.ats.ExplicitAts:
     umb.validate()
     ats = umbi.ats.ExplicitAts()
@@ -172,9 +205,9 @@ def explicit_umb_to_explicit_ats(umb: ExplicitUmb) -> umbi.ats.ExplicitAts:
             umb.item_to_observation,
         )
 
-    # TODO consolidate into one structure
-    ats.state_valuations = umb.index.state_valuations
-    ats.state_valuations_values = umb.state_to_valuation
+    if umb.index.state_valuations is not None:
+        assert umb.state_to_valuation is not None
+        ats.state_valuations = umb_valuations_to_ats_valuations(umb.index.state_valuations, umb.state_to_valuation)
 
     ats.validate()
     return ats
@@ -196,6 +229,12 @@ def explicit_ats_to_explicit_umb(ats: umbi.ats.ExplicitAts) -> ExplicitUmb:
         umb_annotation, applies_to_values = ats_annotation_to_umb_annotation(ats_annotation)
         ap_values[name] = applies_to_values
         ap_annotations[name] = umb_annotation
+
+    state_valuation_type = None
+    state_to_valuation = None
+    if ats.has_state_valuations:
+        state_valuation_type, state_to_valuation = ats_valuations_to_umb_valuations(ats.state_valuations)
+        umb.index.state_valuations = state_valuation_type
 
     ## index
     num_observations = 0
@@ -245,7 +284,7 @@ def explicit_ats_to_explicit_umb(ats: umbi.ats.ExplicitAts) -> ExplicitUmb:
             rewards=reward_annotations,
             aps=ap_annotations,
         ),
-        state_valuations=ats.state_valuations,
+        state_valuations=state_valuation_type,
     )
     ## values
     umb.state_is_initial = ats.state_is_initial
@@ -284,7 +323,7 @@ def explicit_ats_to_explicit_umb(ats: umbi.ats.ExplicitAts) -> ExplicitUmb:
     umb.rewards = reward_values
     umb.aps = ap_values
     umb.item_to_observation = item_to_observation
-    umb.state_to_valuation = ats.state_valuations_values
+    umb.state_to_valuation = state_to_valuation
 
     umb.validate()
     return umb

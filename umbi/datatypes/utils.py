@@ -2,13 +2,10 @@ from fractions import Fraction
 
 from .common_type import (
     CommonType,
-    interval_base_type,
     is_integer_type,
-    is_interval_type,
 )
 from .interval import Interval
 from .json import is_json_instance
-from .struct import StructType
 
 """ Alias for primitive numeric types. """
 NumericPrimitive = int | float | Fraction
@@ -35,8 +32,6 @@ def get_instance_type(value: object) -> CommonType:
         return CommonType.STRING
     elif is_json_instance(value):
         return CommonType.JSON
-    elif isinstance(value, StructType):
-        return CommonType.STRUCT
     else:
         raise ValueError(f"cannot match value to a common type: {value}")
 
@@ -51,40 +46,3 @@ def is_instance_of_common_type(value: object, type: CommonType) -> bool:
         return is_integer_type(type)
     else:
         return value_type == type
-
-
-def promote_numeric_primitive(value: NumericPrimitive, target_type: CommonType) -> NumericPrimitive:
-    if target_type == CommonType.INT:
-        assert isinstance(value, int), f"cannot promote value {value} to int"
-        return value
-    elif target_type == CommonType.DOUBLE:
-        assert isinstance(value, (int, float)), f"cannot promote value {value} to double"
-        return float(value)
-    else:
-        assert target_type == CommonType.RATIONAL, f"unexpected target type: {target_type}"
-        if isinstance(value, Fraction):
-            return value
-        elif isinstance(value, int):
-            return Fraction(value, 1)
-        elif isinstance(value, float):
-            print(f"promoting float {value} to rational {Fraction.from_float(value)}")
-            return Fraction.from_float(value)
-
-        else:
-            raise ValueError(f"cannot promote value {value} to rational")
-
-
-def promote_numeric(value: Numeric, target_type: CommonType) -> Numeric:
-    """Promote a numeric value to the target type."""
-    if not is_interval_type(target_type):
-        assert isinstance(value, NumericPrimitive), f"cannot promote interval {value} to primitive type {target_type}"
-        return promote_numeric_primitive(value, target_type)
-    if isinstance(value, Interval):
-        left = value.left
-        right = value.right
-    else:
-        left = right = value
-    base_type = interval_base_type(target_type)
-    left = promote_numeric_primitive(left, base_type)
-    right = promote_numeric_primitive(right, base_type)
-    return Interval(left, right)

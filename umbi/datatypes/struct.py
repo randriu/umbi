@@ -74,3 +74,45 @@ class StructType:
 
     def __iter__(self):
         return iter(self.fields)
+
+    def bits_to_pad(self) -> int:
+        """Calculate the number of padding bits needed to align current struct to a full byte."""
+        total_bits = 0
+        for f in self.fields:
+            if isinstance(f, StructPadding):
+                total_bits += f.padding
+            else:  # isinstance(f, StructAttribute)
+                if f.size is None:
+                    # variable-size field will be byte-aligned, skip
+                    total_bits = 0
+                else:
+                    total_bits += f.size
+        return (8 - total_bits % 8) % 8
+
+    def add_padding(self, num_bits: int) -> None:
+        assert isinstance(num_bits, int) and num_bits >= 0
+        if num_bits == 0:
+            return
+        self.fields.append(StructPadding(padding=num_bits))
+
+    def pad_to_byte(self, num_bits: int | None) -> None:
+        """Add padding bits to the struct."""
+        if num_bits is None:
+            num_bits = self.bits_to_pad()
+        assert isinstance(num_bits, int) and num_bits >= 0
+        self.add_padding(num_bits)
+        # TODO validate alignment?
+
+    def add_attribute(self, name: str, type: CommonType) -> None:
+        """Add an attribute field to the struct."""
+        size = None
+        if type in [CommonType.STRING, CommonType.RATIONAL]:
+            # add padding to byte-align before string/rational
+            self.add_padding(self.bits_to_pad())
+        else:
+            size = {
+                CommonType.BOOLEAN: 1,
+                CommonType.INT: 64,
+                CommonType.DOUBLE: 64,
+            }[type]
+        self.fields.append(StructAttribute(name=name, type=type, size=size))

@@ -23,6 +23,13 @@ class ValuationPaddingSchema(JsonSchema):
         obj = super().make_object(data, **kwargs)
         return umbi.datatypes.StructPadding(padding=obj.padding)
 
+    def dump(self, obj, *args, **kwargs):
+        assert isinstance(obj, umbi.datatypes.StructPadding)
+        obj_dict = {
+            "padding": obj.padding,
+        }
+        return obj_dict
+
 
 class ValuationAttributeSchema(JsonSchema):
     """Schema for variable fields."""
@@ -45,12 +52,24 @@ class ValuationAttributeSchema(JsonSchema):
 
         return umbi.datatypes.StructAttribute(
             name=obj.name,
-            type=obj.type,
+            type=umbi.datatypes.CommonType(obj.type),
             size=getattr(obj, "size", None),
             lower=getattr(obj, "lower", None),
             upper=getattr(obj, "upper", None),
             offset=getattr(obj, "offset", None),
         )
+
+    def dump(self, obj, *args, **kwargs):
+        assert isinstance(obj, umbi.datatypes.StructAttribute)
+        obj_dict = {
+            "name": obj.name,
+            "type": obj.type.value,
+            "size": obj.size,
+            "lower": obj.lower,
+            "upper": obj.upper,
+            "offset": obj.offset,
+        }
+        return obj_dict
 
 
 class ValuationFieldSchema(OneOfSchema):
@@ -106,8 +125,15 @@ class VariableValuationsSchema(JsonSchema):
 
     def dump(self, obj, *args, **kwargs):
         assert isinstance(obj, umbi.datatypes.StructType)
+        variables = []
+        for field in obj.fields:
+            if isinstance(field, umbi.datatypes.StructPadding):
+                variables.append(ValuationPaddingSchema().dump(field))
+            else:
+                assert isinstance(field, umbi.datatypes.StructAttribute)
+                variables.append(ValuationAttributeSchema().dump(field))
         obj_dict = {
             "alignment": obj.alignment,
-            "variables": self.fields["variables"].serialize("variables", {"variables": obj.fields}),
+            "variables": variables,
         }
         return obj_dict
