@@ -20,12 +20,14 @@ jobs:
 
       - name: install ruff
         uses: astral-sh/ruff-action@v3
+        with:
+          args: "--version"
 
       - name: lint code
-        run: ruff check --output-format=github --target-version=py39
+        run: ruff check --output-format=github --target-version=py311
 
       - name: check code formatting
-        run: ruff format --diff --target-version=py39
+        run: ruff format --diff --target-version=py311
 
       - name: install uv
         uses: astral-sh/setup-uv@v7
