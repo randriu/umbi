@@ -45,7 +45,7 @@ jobs:
         run: uv run pytest tests
 
       - name: build package
-        run: python -m build
+        run: uv build .
 
       - name: verify build artifacts
         run: |
