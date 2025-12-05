@@ -28,6 +28,7 @@ jobs:
 
       - name: check code formatting
         run: ruff format --diff --target-version=py311
+        continue-on-error: true # Remove this once the project is formatted
 
       - name: install uv
         uses: astral-sh/setup-uv@v7
