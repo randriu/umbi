@@ -1,4 +1,4 @@
-from umbi.umbi.datatypes.vector import (
+from umbi.datatypes.vector import (
     is_vector_csr,
     is_vector_ranges,
     csr_to_ranges,
