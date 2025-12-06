@@ -32,6 +32,8 @@ jobs:
 
       - name: install uv
         uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
       - name: setup python
         uses: actions/setup-python@v6
@@ -41,16 +43,8 @@ jobs:
       - name: install project
         run: uv sync --locked --all-extras --dev
 
-      - name: tun tests
+      - name: run tests
         run: uv run pytest tests
 
       - name: build package
-        run: uv build .
-
-      - name: verify build artifacts
-        run: |
-          echo "showing build artifacts..."
-          ls -la dist/
-          echo ""
-          echo "package contents:"
-          twine check dist/*
+        run: uv build

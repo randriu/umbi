@@ -24,9 +24,7 @@ Homepage = "https://github.com/randriu/umbi"
 dev = [
   "pytest",
   "pip-tools",
-  "ruff",
   "toml-sort",
-  "twine",
   "bump-my-version",
 ]
 
